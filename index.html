@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PLDE - Procedural Language Drill Engine</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* BRUTALIST CSS - MOBILE OPTIMIZED */
+        :root {
+            --bg: #ffffff;
+            --fg: #000000;
+            --border: 3px solid #000000;
+        }
+        * { box-sizing: border-box; }
+        
+        body { 
+            font-family: 'Courier New', monospace; 
+            margin: 0; 
+            padding: 0; /* Changed for full-width mobile sticky */
+            background: var(--bg); 
+            color: var(--fg); 
+            line-height: 1.4;
+        }
+
+        /* CONTAINER FOR PADDING */
+        .app-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .view { display: none; }
+        .active { display: block; }
+        
+        /* STICKY TIMER (Mobile Fix) */
+        #timer-sticky-wrapper {
+            position: sticky;
+            top: 0;
+            background: var(--bg);
+            z-index: 1000;
+            border-bottom: var(--border);
+            padding: 10px 20px;
+            margin: 0 -20px 20px -20px; /* Bleed to edges */
+        }
+        
+        #timer-bar { 
+            height: 25px; /* Thicker for visibility */
+            background: #000000; 
+            width: 0%; 
+            transition: width 0.1s linear;
+        }
+
+        /* PHASE LABEL */
+        #phase-label {
+            text-align: center;
+            font-size: 14px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: #666;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+        .cumulative-warning { color: red !important; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+        
+        /* STAGE (Text Wrapping Fix) */
+        #stage { 
+            border: var(--border); 
+            padding: 30px 15px; 
+            margin: 20px 0; 
+            min-height: 200px; 
+            text-align: center; 
+            font-size: 24px; 
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            word-wrap: break-word; /* Prevent overflow */
+            overflow-wrap: break-word;
+            max-width: 100%;
+        }
+
+        /* INPUTS */
+        #input-area { text-align: center; margin-top: 20px; }
+        #user-input { 
+            width: 100%; 
+            padding: 15px; 
+            font-size: 24px; 
+            border: var(--border); 
+            font-family: monospace;
+            box-sizing: border-box;
+            outline: none;
+            border-radius: 0; /* Remove iOS rounded corners */
+            -webkit-appearance: none;
+        }
+        #user-input:focus { background: #f0f0f0; }
+
+        /* BUTTONS (Mobile Touch Targets) */
+        button { 
+            padding: 15px 25px; 
+            margin: 5px; 
+            font-size: 18px; 
+            border: var(--border); 
+            background: white; 
+            color: black;
+            font-family: monospace;
+            font-weight: bold;
+            cursor: pointer; 
+            text-transform: uppercase;
+            min-height: 54px; /* Finger friendly */
+            touch-action: manipulation; /* Removes tap delay */
+            border-radius: 0;
+        }
+        button:hover:not(:disabled) { background: black; color: white; }
+        button:disabled { opacity: 0.3; cursor: not-allowed; border-color: #999; color: #999; }
+        
+        .lesson-btn { display: block; width: 100%; margin: 15px 0; text-align: left; }
+        .option-btn { display: block; width: 100%; margin: 15px 0; text-align: left; }
+
+        /* ACTION BAR (Submit/Mic) */
+        .action-bar {
+            margin-top: 15px;
+            display: flex;
+            flex-direction: column; /* Stack on mobile */
+            gap: 10px;
+        }
+        @media (min-width: 600px) {
+            .action-bar { flex-direction: row; justify-content: space-between; }
+            .action-bar button { width: auto; flex: 1; }
+        }
+
+        /* SENTENCE REORDER STYLES */
+        .word-bank { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin-top: 20px; }
+        .word-btn { font-size: 20px; padding: 12px 18px; }
+
+        /* FEEDBACK */
+        #feedback { 
+            height: 40px; 
+            margin: 20px 0; 
+            font-size: 20px; 
+            font-weight: bold; 
+            text-align: center;
+            text-transform: uppercase;
+        }
+        .fail-flash { animation: flashRed 0.2s 2; }
+        @keyframes flashRed {
+            0%, 100% { background-color: white; }
+            50% { background-color: #ff0000; }
+        }
+
+        /* REPORT CARD */
+        .report-card { border: 4px solid black; padding: 20px; text-align: center; }
+        .report-stat { margin: 10px 0; font-size: 20px; }
+        .report-grade { font-size: 60px; font-weight: bold; margin: 20px 0; }
+
+        /* UTILS */
+        .hidden { visibility: hidden; }
+        .placeholder-box { 
+            border: 2px dashed #999; 
+            padding: 20px; 
+            background: #eee; 
+            margin: 10px 0; 
+            font-size: 14px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+<div class="app-container">
+    <!-- DASHBOARD -->
+    <div id="dashboard-view" class="view active">
+        <h1 style="text-transform: uppercase; border-bottom: 3px solid black; padding-bottom: 10px; word-break: break-all;">PLDE // DASHBOARD</h1>
+        <div id="dashboard-status" style="margin-bottom: 20px; font-weight: bold;">Initializing...</div>
+        <div id="lessons-container"></div>
+    </div>
+
+    <!-- DRILL ENGINE -->
+    <div id="drill-view" class="view">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <button id="back-btn" style="padding: 10px; font-size: 14px; min-height: 40px;">← EXIT</button>
+            <div id="lesson-title" style="font-weight: bold; font-size: 14px;"></div>
+        </div>
+
+        <!-- STICKY TIMER WRAPPER -->
+        <div id="timer-sticky-wrapper">
+            <div id="timer-bar"></div>
+        </div>
+
+        <!-- PHASE LABEL -->
+        <div id="phase-label">PHASE: INITIALIZING</div>
+
+        <div id="step-info" style="text-align: right; font-size: 12px; margin-bottom: 5px;"></div>
+        
+        <!-- MAIN RENDER STAGE -->
+        <div id="stage"></div>
+
+        <!-- INPUT SECTION -->
+        <div id="input-area">
+            <input type="text" id="user-input" placeholder="TYPE HERE..." autocomplete="off">
+            <div class="action-bar">
+                <button id="voice-btn">🎤 VOICE</button>
+                <button id="submit-btn" disabled>SUBMIT [ENTER]</button>
+            </div>
+        </div>
+
+        <div id="feedback"></div>
+    </div>
+</div>
+
+    <!-- SCRIPT (LOGIC UNCHANGED) -->
+    <script>
+        const SUPABASE_URL = 'https://syrhuxxryctrzjdzexnx.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5cmh1eHhyeWN0cnpqZHpleG54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMjYzMjUsImV4cCI6MjA4MDcwMjMyNX0.DP4O-USLYPbjGoTwM2fSc8juzLsABrDbGpQ-7CxSAXQ';
+
+        const appState = {
+            lessons: [],
+            currentLesson: null,
+            currentLessonData: null,
+            currentLinkIndex: 0,
+            currentStepKey: '1_model',
+            userInput: '',
+            isAnswered: false,
+            stepFailed: false,
+            startTime: 0,
+            mistakeCount: 0,
+            linksPassed: 0,
+            inCumulativeMode: false,
+            cumulativeQueue: [],
+            cumulativeIndex: 0,
+            timerActive: false,
+            timerValue: 0,
+            timerMax: 0,
+            timerInterval: null,
+            speechRecognition: null,
+            isListening: false
+        };
+
+        const elements = {};
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            cacheElements();
+            initSupabase();
+            initSpeech();
+            setupEvents();
+            await fetchLessons();
+        });
+
+        function cacheElements() {
+            elements.dashView = document.getElementById('dashboard-view');
+            elements.drillView = document.getElementById('drill-view');
+            elements.container = document.getElementById('lessons-container');
+            elements.status = document.getElementById('dashboard-status');
+            elements.stage = document.getElementById('stage');
+            elements.phaseLabel = document.getElementById('phase-label');
+            elements.input = document.getElementById('user-input');
+            elements.submitBtn = document.getElementById('submit-btn');
+            elements.voiceBtn = document.getElementById('voice-btn');
+            elements.timerBar = document.getElementById('timer-bar');
+            elements.feedback = document.getElementById('feedback');
+            elements.title = document.getElementById('lesson-title');
+            elements.stepInfo = document.getElementById('step-info');
+            elements.inputArea = document.getElementById('input-area');
+        }
+
+        let supabaseClient = null;
+
+        function initSupabase() {
+            if (window.supabase) {
+                try {
+                    supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                    console.log('Supabase initialized.');
+                } catch(e) {
+                    elements.status.innerText = "CRITICAL: FAILED TO INIT SUPABASE CLIENT";
+                }
+            } else {
+                elements.status.innerText = 'CRITICAL ERROR: Supabase SDK missing.';
+            }
+            window.appState = appState;
+        }
+
+        async function fetchLessons() {
+            if (!supabaseClient) return;
+            elements.status.innerText = 'CONNECTING TO SUPABASE...';
+            try {
+                const { data, error } = await supabaseClient.from('lessons').select('*').order('created_at', { ascending: false });
+                if (error) throw error;
+                appState.lessons = data || [];
+                renderDashboard();
+                elements.status.innerText = `READY. ${appState.lessons.length} LESSONS LOADED.`;
+            } catch (err) {
+                elements.status.innerText = 'DB ERROR: ' + err.message;
+            }
+        }
+
+        function renderDashboard() {
+            elements.container.innerHTML = '';
+            if (appState.lessons.length === 0) {
+                elements.container.innerHTML = '<div style="padding:20px; border:1px dashed black;">NO LESSONS FOUND. CHECK DATABASE.</div>';
+                return;
+            }
+            appState.lessons.forEach(lesson => {
+                const btn = document.createElement('button');
+                btn.className = 'lesson-btn';
+                btn.innerHTML = `<strong>${lesson.title}</strong><br><span style="font-size:12px;color:#666">ID: ${lesson.id}</span>`;
+                btn.onclick = () => loadLesson(lesson);
+                elements.container.appendChild(btn);
+            });
+        }
+
+        function loadLesson(lesson) {
+            try {
+                let content = lesson.content;
+                if (typeof content === 'string') content = JSON.parse(content);
+                if (!content.links || !Array.isArray(content.links)) throw new Error('INVALID SCHEMA: Missing "links" array.');
+                appState.currentLesson = lesson;
+                appState.currentLessonData = content;
+                appState.currentLinkIndex = 0;
+                appState.currentStepKey = '1_model';
+                appState.startTime = Date.now();
+                appState.mistakeCount = 0;
+                appState.linksPassed = 0;
+                appState.inCumulativeMode = false;
+                startDrill();
+            } catch (e) {
+                alert('LOAD FAILED: ' + e.message);
+            }
+        }
+
+        function startDrill() {
+            elements.dashView.classList.remove('active');
+            elements.drillView.classList.add('active');
+            elements.title.innerText = appState.currentLessonData.meta?.title || 'UNTITLED DRILL';
+            renderStep();
+        }
+
+        function renderStep() {
+            stopTimer();
+            resetInput();
+            elements.phaseLabel.classList.remove('cumulative-warning');
+            const link = appState.currentLessonData.links[appState.currentLinkIndex];
+            const step = link.steps[appState.currentStepKey];
+            elements.stepInfo.innerText = `LINK ${appState.currentLinkIndex + 1} / ${appState.currentLessonData.links.length} :: [${appState.currentStepKey.toUpperCase()}]`;
+            elements.stage.innerHTML = '';
+            elements.inputArea.style.display = 'block';
+            updatePhaseLabel(step);
+
+            if (!step.type) { elements.stage.innerHTML = `<div style="color:red">ERROR: Step has no "type".</div>`; return; }
+
+            switch (step.type) {
+                case 'imprint': renderImprint(link, step); break;
+                case 'multiple_choice': renderMultipleChoice(link, step); break;
+                case 'fill_gap': renderFillGap(link, step); break;
+                case 'input_strict': renderInputStrict(link, step); break;
+                case 'sentence_reorder': renderSentenceReorder(link, step); break;
+                default: elements.stage.innerHTML = `<div style="color:red; font-size: 16px;">UNKNOWN TYPE "${step.type}"</div>`; elements.inputArea.style.display = 'none';
+            }
+            if (step.time_limit) startTimer(step.time_limit);
+            else elements.timerBar.style.width = '0%';
+        }
+        
+        function updatePhaseLabel(step) {
+            let label = "DRILL";
+            if (step.type === 'imprint') label = "PHASE 1: IMPRINT";
+            else if (step.type === 'multiple_choice') label = "PHASE 2: RECOGNITION";
+            else if (step.type === 'fill_gap') label = "PHASE 3: COMPLETION";
+            else if (step.type === 'sentence_reorder') label = "PHASE 3: CONSTRUCTION";
+            else if (step.type === 'input_strict') label = "PHASE 4: PRODUCTION";
+            if (appState.currentStepKey.includes('recall')) label = "PHASE 5: TIMED RECALL";
+            elements.phaseLabel.innerText = label;
+        }
+
+        function startCumulativeDrill() {
+            appState.inCumulativeMode = true;
+            appState.cumulativeIndex = 0;
+            appState.cumulativeQueue = [];
+            const interval = appState.currentLessonData.meta.cumulative_interval || 3;
+            const passedCount = appState.linksPassed; 
+            const links = appState.currentLessonData.links;
+            const startIdx = passedCount - interval; 
+            for (let i = startIdx; i < passedCount; i++) {
+                if (links[i]) appState.cumulativeQueue.push(links[i]);
+            }
+            renderCumulativeStep();
+        }
+
+        function renderCumulativeStep() {
+            stopTimer();
+            resetInput();
+            const link = appState.cumulativeQueue[appState.cumulativeIndex];
+            elements.phaseLabel.innerText = "⚠️ CUMULATIVE REVIEW ⚠️";
+            elements.phaseLabel.classList.add('cumulative-warning');
+            elements.stepInfo.innerText = `REVIEW ITEM ${appState.cumulativeIndex + 1} / ${appState.cumulativeQueue.length}`;
+            elements.stage.innerHTML = '';
+            elements.inputArea.style.display = 'block';
+            let html = `<div style="font-size:32px; font-weight:bold; margin-bottom:20px;">${link.trigger.text}</div>`;
+            elements.stage.innerHTML = html;
+            elements.input.placeholder = "Prove you remember...";
+            elements.input.focus();
+            startTimer(7); 
+        }
+
+        function failCumulative() {
+            stopTimer();
+            appState.mistakeCount++;
+            document.body.classList.add('fail-flash');
+            elements.feedback.style.color = 'red';
+            elements.feedback.innerText = "REVIEW FAILED - RESETTING CHAIN";
+            setTimeout(() => {
+                document.body.classList.remove('fail-flash');
+                appState.cumulativeIndex = 0; 
+                renderCumulativeStep();
+            }, 1000);
+        }
+
+        function nextCumulativeStep() {
+            appState.cumulativeIndex++;
+            if (appState.cumulativeIndex >= appState.cumulativeQueue.length) {
+                appState.inCumulativeMode = false;
+                if (appState.currentLinkIndex < appState.currentLessonData.links.length) {
+                    const steps = Object.keys(appState.currentLessonData.links[appState.currentLinkIndex].steps).sort();
+                    appState.currentStepKey = steps[0];
+                    renderStep();
+                } else {
+                    showReportCard();
+                }
+            } else {
+                renderCumulativeStep();
+            }
+        }
+
+        function renderImprint(link, step) {
+            let html = '';
+            if (step.display) {
+                step.display.forEach(field => {
+                    if (field === 'trigger') html += renderMedia(link.trigger, 'TRIGGER');
+                    if (field === 'response') html += renderMedia(link.response, 'RESPONSE');
+                    if (field === 'translation') html += `<div style="font-size:18px; color:#555; margin-top:10px;">(${link.response.translation})</div>`;
+                    if (field === 'phonetic') html += `<div style="font-family:monospace; margin-top:5px;">/${link.response.phonetic}/</div>`;
+                });
+            } else {
+                html += renderMedia(link.trigger);
+                html += renderMedia(link.response);
+            }
+            elements.stage.innerHTML = html;
+            elements.submitBtn.innerText = "READY [ENTER]";
+            elements.submitBtn.disabled = false;
+            elements.input.style.display = 'none';
+            elements.voiceBtn.style.display = 'none';
+        }
+
+        function renderMultipleChoice(link, step) {
+            elements.input.style.display = 'none';
+            elements.voiceBtn.style.display = 'none';
+            let html = `<div style="margin-bottom:30px; font-weight:bold; font-size:36px;">${link.trigger.text}</div>`;
+            if (step.options) {
+                step.options.forEach(opt => {
+                    html += `<button class="option-btn" onclick="handleOptionClick('${opt.replace(/'/g, "\\'")}')">${opt}</button>`;
+                });
+            }
+            elements.stage.innerHTML = html;
+        }
+
+        function renderFillGap(link, step) {
+            elements.input.style.display = 'block';
+            elements.input.placeholder = "Complete the phrase...";
+            elements.input.focus();
+            let sentence = step.sentence_structure || "MISSING STRUCTURE";
+            let html = `
+                <div style="font-size:20px; margin-bottom:20px;">${link.trigger.text}</div>
+                <div style="font-size:32px; font-weight:bold;">${sentence}</div>
+            `;
+            elements.stage.innerHTML = html;
+        }
+        
+        function renderSentenceReorder(link, step) {
+            elements.input.style.display = 'block';
+            elements.input.readOnly = true;
+            elements.input.placeholder = "Click words to build sentence...";
+            elements.voiceBtn.style.display = 'none';
+            const target = link.response.text;
+            const words = target.split(' ');
+            for (let i = words.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [words[i], words[j]] = [words[j], words[i]];
+            }
+            let html = `<div style="font-size:24px; font-weight:bold; margin-bottom:20px;">${link.trigger.text}</div><div class="word-bank">`;
+            words.forEach(word => {
+                html += `<button class="word-btn" onclick="handleWordClick(this, '${word.replace(/'/g, "\\'")}')">${word}</button>`;
+            });
+            html += '</div>';
+            elements.stage.innerHTML = html;
+        }
+
+        function renderInputStrict(link, step) {
+            elements.input.style.display = 'block';
+            elements.input.placeholder = "Type exact answer...";
+            elements.input.focus();
+            elements.voiceBtn.style.display = 'inline-block';
+            let html = '';
+            if (step.display) {
+                step.display.forEach(field => {
+                    if (field === 'trigger') html += `<div style="font-size:32px; font-weight:bold; margin-bottom:20px;">${link.trigger.text}</div>`;
+                    if (field === 'translation') html += `<div style="font-size:18px; color:#666;">${link.response.translation}</div>`;
+                });
+            }
+            elements.stage.innerHTML = html;
+        }
+
+        function renderMedia(obj, label) {
+            if (!obj) return '';
+            let out = '<div style="margin: 15px 0;">';
+            if (label) out += `<div style="font-size:12px; letter-spacing:2px; margin-bottom:5px;">${label}</div>`;
+            if (obj.text) out += `<div style="font-size:28px; font-weight:bold;">${obj.text}</div>`;
+            if (obj.audio_url) {
+                if (obj.audio_url === 'placeholder') out += '<div class="placeholder-box">[AUDIO MISSING] 🎵</div>';
+                else out += `<audio controls src="${obj.audio_url}" autoplay style="margin-top:10px; height:30px;"></audio>`;
+            }
+            if (obj.video_url) {
+                if (obj.video_url === 'placeholder') out += '<div class="placeholder-box" style="height:150px; display:flex; align-items:center; justify-content:center;">[VIDEO MISSING] 🎬</div>';
+                else out += `<video controls src="${obj.video_url}" style="max-width:100%; margin-top:10px;"></video>`;
+            }
+            out += '</div>';
+            return out;
+        }
+
+        window.handleOptionClick = (answer) => validate(answer);
+        
+        window.handleWordClick = (btn, word) => {
+            const currentVal = elements.input.value;
+            const newVal = currentVal ? currentVal + ' ' + word : word;
+            elements.input.value = newVal;
+            appState.userInput = newVal;
+            btn.disabled = true;
+            btn.style.opacity = '0.5';
+            elements.submitBtn.disabled = false;
+        };
+
+        function validate(userVal) {
+            stopTimer();
+            if (appState.inCumulativeMode) {
+                const target = appState.cumulativeQueue[appState.cumulativeIndex].response.text;
+                const cleanUser = userVal.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim();
+                const cleanTarget = target.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim();
+                if (cleanUser === cleanTarget) pass();
+                else failCumulative();
+                return;
+            }
+            if (appState.isAnswered) return;
+            const link = appState.currentLessonData.links[appState.currentLinkIndex];
+            const step = link.steps[appState.currentStepKey];
+            if (step.type === 'imprint') { nextStep(); return; }
+            const target = link.response.text;
+            const cleanUser = userVal.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim();
+            const cleanTarget = target.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim();
+            if (cleanUser === cleanTarget) pass();
+            else fail();
+        }
+
+        function pass() {
+            appState.isAnswered = true;
+            elements.feedback.style.color = 'green';
+            elements.feedback.innerText = "CORRECT";
+            setTimeout(() => {
+                if (appState.inCumulativeMode) {
+                    appState.isAnswered = false; 
+                    elements.feedback.innerText = "";
+                    nextCumulativeStep();
+                } else {
+                    nextStep();
+                }
+            }, 600);
+        }
+
+        function fail() {
+            stopTimer();
+            appState.mistakeCount++;
+            document.body.classList.add('fail-flash');
+            setTimeout(() => document.body.classList.remove('fail-flash'), 400);
+            elements.feedback.style.color = 'red';
+            elements.feedback.innerText = "FAIL - RESETTING LINK";
+            setTimeout(() => {
+                appState.currentStepKey = '1_model';
+                renderStep();
+            }, 1000);
+        }
+
+        function nextStep() {
+            const steps = Object.keys(appState.currentLessonData.links[appState.currentLinkIndex].steps).sort();
+            const currIdx = steps.indexOf(appState.currentStepKey);
+            if (currIdx < steps.length - 1) {
+                appState.currentStepKey = steps[currIdx + 1];
+                renderStep();
+            } else {
+                appState.linksPassed++;
+                const interval = appState.currentLessonData.meta.cumulative_interval || 3;
+                if (appState.linksPassed > 0 && appState.linksPassed % interval === 0 && appState.currentLinkIndex < appState.currentLessonData.links.length - 1) {
+                    appState.currentLinkIndex++; 
+                    startCumulativeDrill();
+                    return;
+                }
+                if (appState.currentLinkIndex < appState.currentLessonData.links.length - 1) {
+                    appState.currentLinkIndex++;
+                    const nextLinkSteps = Object.keys(appState.currentLessonData.links[appState.currentLinkIndex].steps).sort();
+                    appState.currentStepKey = nextLinkSteps[0];
+                    renderStep();
+                } else {
+                    showReportCard();
+                }
+            }
+        }
+        
+        function showReportCard() {
+            const totalTime = ((Date.now() - appState.startTime) / 1000).toFixed(1);
+            const totalLinks = appState.currentLessonData.links.length;
+            const totalSteps = totalLinks * 5; 
+            const totalAttempts = totalSteps + appState.mistakeCount;
+            const accuracy = Math.round((totalSteps / totalAttempts) * 100);
+            
+            let grade = 'F';
+            if (accuracy >= 95) grade = 'S';
+            else if (accuracy >= 90) grade = 'A';
+            else if (accuracy >= 80) grade = 'B';
+            else if (accuracy >= 70) grade = 'C';
+            
+            let color = 'black';
+            if (grade === 'S' || grade === 'A') color = 'green';
+            if (grade === 'F') color = 'red';
+            
+            const html = `
+                <div class="report-card">
+                    <h1>LESSON COMPLETE</h1>
+                    <div style="border-bottom: 2px solid black; margin: 20px 0;"></div>
+                    <div class="report-stat">TIME: ${totalTime}s</div>
+                    <div class="report-stat">ACCURACY: ${accuracy}%</div>
+                    <div class="report-stat">MISTAKES: ${appState.mistakeCount}</div>
+                    <div class="report-grade" style="color: ${color}">${grade}</div>
+                    <button onclick="exitDrill()" style="margin-top: 20px; width: 100%;">BACK TO DASHBOARD</button>
+                </div>
+            `;
+            elements.stage.innerHTML = html;
+            elements.inputArea.style.display = 'none';
+            elements.timerBar.style.width = '0%';
+            elements.phaseLabel.innerText = "REPORT CARD";
+            elements.feedback.innerText = "";
+        }
+        
+        window.exitDrill = () => {
+             elements.drillView.classList.remove('active');
+             elements.dashView.classList.add('active');
+        };
+
+        function startTimer(seconds) {
+            appState.timerMax = seconds;
+            appState.timerValue = seconds;
+            appState.timerActive = true;
+            elements.timerBar.style.width = '100%';
+            elements.timerBar.style.background = 'black';
+            appState.timerInterval = setInterval(() => {
+                appState.timerValue -= 0.1;
+                const pct = (appState.timerValue / appState.timerMax) * 100;
+                elements.timerBar.style.width = `${pct}%`;
+                if (appState.timerValue <= 0) {
+                    if (appState.inCumulativeMode) failCumulative();
+                    else fail();
+                }
+            }, 100);
+        }
+
+        function stopTimer() {
+            clearInterval(appState.timerInterval);
+            appState.timerActive = false;
+        }
+
+        function resetInput() {
+            appState.isAnswered = false;
+            appState.userInput = '';
+            elements.input.value = '';
+            elements.input.readOnly = false;
+            elements.input.style.display = 'block';
+            elements.feedback.innerText = '';
+            elements.submitBtn.disabled = true;
+            elements.voiceBtn.style.display = 'inline-block';
+        }
+
+        function setupEvents() {
+            elements.input.addEventListener('input', (e) => {
+                appState.userInput = e.target.value;
+                elements.submitBtn.disabled = e.target.value.trim() === '';
+            });
+            elements.input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const step = appState.currentLessonData?.links[appState.currentLinkIndex].steps[appState.currentStepKey];
+                    if (step && step.type === 'imprint') {
+                        validate("");
+                    } else if (!elements.submitBtn.disabled) {
+                        validate(appState.userInput);
+                    }
+                }
+            });
+            elements.submitBtn.addEventListener('click', () => { validate(appState.userInput); });
+            document.getElementById('back-btn').addEventListener('click', () => {
+                stopTimer();
+                elements.drillView.classList.remove('active');
+                elements.dashView.classList.add('active');
+            });
+        }
+
+        function initSpeech() {
+            if ('webkitSpeechRecognition' in window) {
+                const sr = new webkitSpeechRecognition();
+                sr.continuous = false;
+                elements.voiceBtn.addEventListener('click', () => {
+                    if (appState.isListening) {
+                        sr.stop();
+                    } else {
+                        const meta = appState.currentLessonData?.meta || {};
+                        let lang = meta.target_language;
+                        if (!lang && meta.title) {
+                            const title = meta.title.toLowerCase();
+                            if (title.includes('spanish')) lang = 'es-ES';
+                            else if (title.includes('german')) lang = 'de-DE';
+                            else if (title.includes('french')) lang = 'fr-FR';
+                        }
+                        if (!lang) lang = 'es-ES';
+                        sr.lang = lang;
+                        appState.isListening = true;
+                        sr.start();
+                        elements.voiceBtn.innerText = '🔴 LISTENING';
+                        elements.voiceBtn.style.background = 'red';
+                        elements.voiceBtn.style.color = 'white';
+                    }
+                });
+                sr.onresult = (e) => {
+                    let transcript = e.results[0][0].transcript;
+                    let target = "";
+                    if (appState.inCumulativeMode && appState.cumulativeQueue[appState.cumulativeIndex]) {
+                         target = appState.cumulativeQueue[appState.cumulativeIndex].response.text;
+                    } else if (appState.currentLessonData) {
+                         target = appState.currentLessonData.links[appState.currentLinkIndex].response.text;
+                    }
+                    if (target && transcript.toLowerCase() === target.toLowerCase()) {
+                        transcript = target; 
+                    }
+                    elements.input.value = transcript;
+                    appState.userInput = transcript;
+                    elements.submitBtn.disabled = false;
+                    validate(appState.userInput);
+                };
+                sr.onend = () => {
+                    appState.isListening = false;
+                    elements.voiceBtn.innerText = '🎤 VOICE';
+                    elements.voiceBtn.style.background = 'white';
+                    elements.voiceBtn.style.color = 'black';
+                };
+            } else {
+                elements.voiceBtn.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
