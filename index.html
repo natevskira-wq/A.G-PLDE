@@ -1072,23 +1072,26 @@
     }
 
     // --- RENDER HELPERS ---
-    function renderImprint(link, step) {
-        let html = '';
-        if (step.display) {
-            step.display.forEach(field => {
-                if (field === 'trigger') html += renderMedia(link.trigger, 'TRIGGER');
-                if (field === 'response') html += renderMedia(link.response, 'RESPONSE');
-                if (field === 'audio' && link.response.audio_url) html += `<audio controls src="${link.response.audio_url}" autoplay style="margin-top:10px; height:30px;"></audio>`;
-            });
-        } else {
-            html += renderMedia(link.trigger) + renderMedia(link.response);
-        }
-        elements.stage.innerHTML = html;
-        elements.submitBtn.innerText = "READY";
-        elements.submitBtn.disabled = false;
-        elements.input.style.display = 'none';
-        elements.voiceBtn.style.display = 'none';
+    function function renderImprint(link, step) {
+    let html = '';
+    
+    if (step.display) {
+        step.display.forEach(field => {
+            if (field === 'trigger') html += renderMedia(link.trigger, 'TRIGGER');
+            if (field === 'response') html += renderMedia(link.response, 'RESPONSE');
+            // REMOVE THIS DUPLICATE AUDIO LINE:
+            // if (field === 'audio' && link.response.audio_url) html += `<audio controls src="${link.response.audio_url}" autoplay style="margin-top:10px; height:30px;"></audio>`;
+        });
+    } else {
+        html += renderMedia(link.trigger) + renderMedia(link.response);
     }
+    
+    elements.stage.innerHTML = html;
+    elements.submitBtn.innerText = "READY";
+    elements.submitBtn.disabled = false;
+    elements.input.style.display = 'none';
+    elements.voiceBtn.style.display = 'none';
+}
 
     function renderMultipleChoice(link, step) {
         elements.input.style.display = 'none';
