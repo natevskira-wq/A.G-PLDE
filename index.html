@@ -27,7 +27,6 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            /* CRITICAL: Extra padding so content isn't hidden by sticky footer in Drill View */
             padding-bottom: 200px; 
         }
 
@@ -36,215 +35,109 @@
 
         /* BREADCRUMBS */
         .breadcrumb-bar {
-            font-size: 12px;
-            color: #666;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            border-bottom: 1px solid #ccc;
-            padding-bottom: 5px;
-            margin-bottom: 15px;
-            display: flex;
-            justify-content: space-between;
+            font-size: 12px; color: #666; text-transform: uppercase; letter-spacing: 1px;
+            border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 15px;
+            display: flex; justify-content: space-between;
         }
 
         /* LOGIN VIEW SPECIFIC */
         .centered-view {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            min-height: 80vh;
-            text-align: center;
+            display: flex; flex-direction: column; justify-content: center;
+            min-height: 80vh; text-align: center;
         }
         
-        /* LANGUAGE SELECTOR - VECTOR CONTAINER */
+        /* VECTOR CONTAINER */
         .vector-container {
-            border: var(--border);
-            padding: 30px 20px 20px 20px;
-            margin: 30px 0;
-            position: relative;
+            border: var(--border); padding: 30px 20px 20px 20px; margin: 30px 0; position: relative;
         }
-        
         .vector-label {
-            background: black;
-            color: white;
-            padding: 5px 10px;
-            position: absolute;
-            top: -15px;
-            left: 15px;
-            font-weight: bold;
-            text-transform: uppercase;
-            font-size: 14px;
-            letter-spacing: 1px;
+            background: black; color: white; padding: 5px 10px; position: absolute;
+            top: -15px; left: 15px; font-weight: bold; text-transform: uppercase;
+            font-size: 14px; letter-spacing: 1px;
         }
-        
-        .language-pair {
-            margin-bottom: 25px;
-        }
-        
+        .language-pair { margin-bottom: 25px; }
         .language-label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            font-size: 12px;
-            color: #444;
+            display: block; margin-bottom: 8px; font-weight: bold; text-transform: uppercase;
+            letter-spacing: 1px; font-size: 12px; color: #444;
         }
         
         select, input[type="text"] {
-            width: 100%;
-            padding: 15px;
-            font-size: 18px;
-            border: var(--border);
-            font-family: monospace;
-            background: white;
-            -webkit-appearance: none;
-            appearance: none;
-            cursor: pointer;
-            border-radius: 0;
-            outline: none;
+            width: 100%; padding: 15px; font-size: 18px; border: var(--border);
+            font-family: monospace; background: white; -webkit-appearance: none;
+            appearance: none; cursor: pointer; border-radius: 0; outline: none;
         }
-        
-        select:focus, input[type="text"]:focus {
-            background: #f0f0f0;
-        }
+        select:focus, input[type="text"]:focus { background: #f0f0f0; }
         
         /* CREDITS FOOTER */
         .credits-footer {
-            margin-top: 60px;
-            text-align: center;
-            border-top: 2px solid #000; /* Thicker, solid black line */
-            padding-top: 20px;
-            color: #000; /* Solid Black, no transparency */
+            margin-top: 60px; text-align: center; border-top: 2px solid #000;
+            padding-top: 20px; color: #000;
         }
         .credits-name {
-            font-weight: 900; /* Extra Bold */
-            color: #000;
-            font-size: 22px; /* Biggest */
-            letter-spacing: 1px;
-            margin-bottom: 8px;
+            font-weight: 900; color: #000; font-size: 22px;
+            letter-spacing: 1px; margin-bottom: 8px;
         }
         .credits-phone {
-            font-weight: bold;
-            font-size: 18px; /* Medium */
-            color: #000;
-            margin-bottom: 8px;
-            font-family: monospace;
+            font-weight: bold; font-size: 18px; color: #000;
+            margin-bottom: 8px; font-family: monospace;
         }
         .credits-title {
-            font-size: 14px; /* Smallest, but legible */
-            font-weight: bold;
-            letter-spacing: 2px;
-            color: #000;
+            font-size: 14px; font-weight: bold; letter-spacing: 2px; color: #000;
         }
         
         /* STICKY TIMER */
         #timer-sticky-wrapper {
-            position: sticky;
-            top: 0;
-            background: var(--bg);
-            z-index: 1000;
-            border-bottom: var(--border);
-            padding: 10px 20px;
-            margin: 0 -20px 20px -20px; 
+            position: sticky; top: 0; background: var(--bg); z-index: 1000;
+            border-bottom: var(--border); padding: 10px 20px; margin: 0 -20px 20px -20px; 
         }
-        
-        #timer-bar { 
-            height: 25px; 
-            background: #000000; 
-            width: 0%; 
-            transition: width 0.1s linear;
-        }
+        #timer-bar { height: 25px; background: #000000; width: 0%; transition: width 0.1s linear; }
 
         #phase-label {
-            text-align: center;
-            font-size: 14px;
-            font-weight: bold;
-            letter-spacing: 2px;
-            color: #666;
-            margin-bottom: 10px;
-            text-transform: uppercase;
+            text-align: center; font-size: 14px; font-weight: bold; letter-spacing: 2px;
+            color: #666; margin-bottom: 10px; text-transform: uppercase;
         }
         .cumulative-warning { color: red !important; animation: pulse 2s infinite; }
         @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
         
         #stage { 
-            border: var(--border); 
-            padding: 30px 15px; 
-            margin: 20px 0; 
-            min-height: 200px; 
-            text-align: center; 
-            font-size: 24px; 
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            word-wrap: break-word;
-            overflow-wrap: break-word;
-            max-width: 100%;
+            border: var(--border); padding: 30px 15px; margin: 20px 0; min-height: 200px; 
+            text-align: center; font-size: 24px; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; word-wrap: break-word;
+            overflow-wrap: break-word; max-width: 100%;
+        }
+
+        /* TEXT INTERACTION */
+        .speakable { cursor: pointer; transition: color 0.2s; }
+        .speakable:hover { color: #555; text-decoration: underline; }
+        
+        .translation-text {
+            font-size: 0.9rem; color: #666; font-style: italic; margin-top: 10px; font-weight: normal;
         }
 
         /* STICKY ACTION FOOTER */
         #input-area { 
-            text-align: center; 
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            background: white;
-            border-top: 3px solid black;
-            padding: 15px;
-            z-index: 2000;
-            box-shadow: 0 -4px 15px rgba(0,0,0,0.1);
+            text-align: center; position: fixed; bottom: 0; left: 0; width: 100%;
+            background: white; border-top: 3px solid black; padding: 15px;
+            z-index: 2000; box-shadow: 0 -4px 15px rgba(0,0,0,0.1);
         }
-
-        #user-input { 
-            width: 100%; 
-            padding: 15px; 
-            font-size: 24px; 
-            border: var(--border); 
-            font-family: monospace;
-            box-sizing: border-box;
-            outline: none;
-            border-radius: 0;
-            -webkit-appearance: none;
-            margin-bottom: 10px;
-        }
-        #user-input:focus { background: #f0f0f0; }
+        #user-input { margin-bottom: 10px; }
 
         button { 
-            padding: 15px 25px; 
-            margin: 5px; 
-            font-size: 18px; 
-            border: var(--border); 
-            background: white; 
-            color: black;
-            font-family: monospace;
-            font-weight: bold;
-            cursor: pointer; 
-            text-transform: uppercase;
-            min-height: 54px;
-            touch-action: manipulation;
-            border-radius: 0;
+            padding: 15px 25px; margin: 5px; font-size: 18px; border: var(--border); 
+            background: white; color: black; font-family: monospace; font-weight: bold;
+            cursor: pointer; text-transform: uppercase; min-height: 54px;
+            touch-action: manipulation; border-radius: 0;
         }
         button:hover:not(:disabled) { background: black; color: white; }
         button:disabled { opacity: 0.3; cursor: not-allowed; border-color: #999; color: #999; }
         
         .lesson-btn { display: block; width: 100%; margin: 15px 0; text-align: left; position: relative; }
         .lesson-btn.locked { opacity: 0.5; cursor: not-allowed; background: #eee; }
-        
-        /* DECAYED STYLE */
         .lesson-btn.decayed {
-            border-color: #FFD700; /* Gold/Yellow */
-            box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            border-color: #FFD700; box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
             animation: borderPulse 2s infinite;
         }
-        
-        @keyframes borderPulse {
-            0% { border-color: #FFD700; }
-            50% { border-color: #FFA500; }
-            100% { border-color: #FFD700; }
-        }
+        @keyframes borderPulse { 0% { border-color: #FFD700; } 50% { border-color: #FFA500; } 100% { border-color: #FFD700; } }
 
         .score-badge { float: right; font-size: 14px; background: black; color: white; padding: 2px 6px; }
         .badge-green { background: #00aa00 !important; }
@@ -252,46 +145,31 @@
         .badge-red { background: #aa0000 !important; }
         
         .option-btn { display: block; width: 100%; margin: 15px 0; text-align: left; }
-
-        .action-bar {
-            display: flex;
-            flex-direction: row; 
-            gap: 10px;
-            justify-content: space-between;
-        }
+        .action-bar { display: flex; flex-direction: row; gap: 10px; justify-content: space-between; }
         .action-bar button { flex: 1; }
 
-        .word-bank, .letter-bank { 
-            display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; 
-            margin-top: 20px; margin-bottom: 20px;
-        }
-        
+        .word-bank, .letter-bank { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 20px 0; }
         .word-btn, .letter-btn { 
             font-size: 20px; padding: 12px 18px; transition: all 0.2s ease;
             border: var(--border); background: white; color: black; cursor: pointer;
             font-family: monospace; text-transform: uppercase;
         }
         .letter-btn { font-size: 24px; padding: 15px; min-width: 50px; }
-        
         .word-btn:not(:disabled):hover, .letter-btn:not(:disabled):hover {
             transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); background: black; color: white;
         }
         .letter-btn:disabled, .word-btn:disabled { opacity: 0.3; cursor: not-allowed; }
         
-        /* Pills Area */
         #selected-words-area {
             display: flex; flex-wrap: wrap; justify-content: center; gap: 10px;
             margin: 20px 0; min-height: 60px; padding: 15px;
             border: 2px dashed #999; background: #f8f8f8; border-radius: 0; align-items: center;
         }
-        
         .word-pill, .letter-pill {
             font-size: 20px; padding: 12px 18px; border: var(--border);
-            background: white; color: black; cursor: pointer;
-            font-family: monospace; font-weight: bold; position: relative; transition: all 0.2s ease;
+            background: white; color: black; cursor: pointer; font-family: monospace; font-weight: bold; position: relative;
         }
         .letter-pill { font-size: 24px; padding: 15px; min-width: 50px; }
-        
         .word-pill:hover, .letter-pill:hover { background: black; color: white; }
         .word-pill::after, .letter-pill::after {
             content: "✕"; position: absolute; top: -8px; right: -8px;
@@ -302,70 +180,39 @@
         }
         .word-pill:hover::after, .letter-pill:hover::after { opacity: 1; transform: scale(1); }
         
-        .sentence-instructions, .spelling-instructions {
-            font-size: 14px; color: #666; text-align: center; margin-bottom: 10px; font-style: italic;
-        }
+        .sentence-instructions { font-size: 14px; color: #666; text-align: center; margin-bottom: 10px; font-style: italic; }
 
-        #feedback { 
-            height: 40px; margin: 20px 0; font-size: 20px; 
-            font-weight: bold; text-align: center; text-transform: uppercase;
-        }
+        #feedback { height: 40px; margin: 20px 0; font-size: 20px; font-weight: bold; text-align: center; text-transform: uppercase; }
         .fail-flash { animation: flashRed 0.5s; }
-        @keyframes flashRed {
-            0%, 100% { background-color: white; }
-            50% { background-color: #ff0000; }
-        }
+        @keyframes flashRed { 0%, 100% { background-color: white; } 50% { background-color: #ff0000; } }
         
-        .correct-answer-display {
-            font-size: 42px; font-weight: bold; color: #000;
-            margin: 20px 0; text-align: center; line-height: 1.3;
-        }
-
+        .correct-answer-display { font-size: 42px; font-weight: bold; color: #000; margin: 20px 0; text-align: center; line-height: 1.3; }
         .report-card { border: 4px solid black; padding: 20px; text-align: center; }
-        .report-stat { margin: 10px 0; font-size: 20px; }
         .report-grade { font-size: 60px; font-weight: bold; margin: 20px 0; }
-        .hidden { visibility: hidden; }
-        .placeholder-box { 
-            border: 2px dashed #999; padding: 20px; background: #eee; 
-            margin: 10px 0; font-size: 14px; color: #555;
-        }
+        .placeholder-box { border: 2px dashed #999; padding: 20px; background: #eee; margin: 10px 0; font-size: 14px; color: #555; }
         
-        .header-bar {
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
-        }
-        
+        .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .settings-btn { padding: 8px 12px; font-size: 14px; min-height: auto; }
         
         .voice-feedback { font-size: 12px; color: #666; margin-top: 5px; text-transform: none; letter-spacing: 0; }
-        .single-word-display {
-            font-size: 32px; font-weight: bold; margin-bottom: 20px;
-            text-transform: uppercase; letter-spacing: 2px;
-        }
+        .single-word-display { font-size: 32px; font-weight: bold; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; }
         .voice-listening { background: red !important; color: white !important; }
     </style>
 </head>
 <body>
 <div class="app-container">
 
-    <!-- LOGIN VIEW (UPDATED) -->
+    <!-- LOGIN -->
     <div id="login-view" class="view">
         <div class="centered-view">
             <h1 style="text-transform: uppercase; border-bottom: 3px solid black; padding-bottom: 10px; margin-bottom: 40px;">PLDE // GATEWAY</h1>
-            
             <div style="font-size: 60px; margin-bottom: 20px;">🔒</div>
-            
             <div style="margin-bottom: 20px;">
                 <input type="text" id="access-code" placeholder="ENTER CODE" style="text-align: center; font-size: 28px; letter-spacing: 2px;">
             </div>
-            
             <button id="login-btn" style="width: 100%; font-size: 24px;">LOGIN</button>
-            
             <div id="login-status" style="margin-top: 20px; color: red; font-weight: bold;"></div>
-            
-            <!-- Hidden text for device limit, logic remains -->
             <div style="display:none;">ACCESS LIMITED TO 2 DEVICES PER CODE</div>
-
-            <!-- CREDITS FOOTER -->
             <div class="credits-footer">
                 <div class="credits-name">CONCEPT & CODE BY ABD-ALRAHMAN GAMAL</div>
                 <div class="credits-phone">01001395058</div>
@@ -374,24 +221,19 @@
         </div>
     </div>
 
-    <!-- LANGUAGE SELECTOR (UPDATED LAYOUT) -->
+    <!-- CONFIG -->
     <div id="language-selector-view" class="view">
         <h1 style="text-transform: uppercase; border-bottom: 3px solid black; padding-bottom: 10px;">PLDE // LANGUAGE SELECTOR</h1>
-        
-        <!-- NEW VECTOR CONTAINER -->
         <div class="vector-container">
             <div class="vector-label">DEFINE VECTOR</div>
-            
             <div class="language-pair">
                 <label class="language-label">I SPEAK (NATIVE)</label>
                 <select id="native-select"><option value="">-- SELECT --</option></select>
             </div>
-            
             <div class="language-pair">
                 <label class="language-label">I LEARN (TARGET)</label>
                 <select id="target-select"><option value="">-- SELECT --</option></select>
             </div>
-            
             <div class="language-pair">
                 <label class="language-label">DIFFICULTY</label>
                 <select id="level-select">
@@ -405,61 +247,43 @@
                 </select>
             </div>
         </div>
-        
         <div style="text-align: center; margin-bottom: 30px; font-size: 14px;">
             <div style="font-weight: bold;">AVAILABLE CONTENT STATUS:</div>
             <div id="available-pairs" style="color: #666; margin-top: 5px;">Scanning database...</div>
         </div>
-
         <div style="margin-top: 20px;">
             <button id="start-learning-btn" disabled style="width: 100%;">START LEARNING</button>
         </div>
     </div>
 
-    <!-- DASHBOARD VIEW (UPDATED FOOTER) -->
+    <!-- DASHBOARD -->
     <div id="dashboard-view" class="view">
         <div class="header-bar">
             <h1 style="text-transform: uppercase; border-bottom: 3px solid black; padding-bottom: 10px; margin: 0; flex: 1;">DASHBOARD</h1>
             <button id="change-languages-btn" class="settings-btn" style="width:auto; height:auto;">← CHANGE LANGUAGE/LEVEL</button>
         </div>
-
-        <div class="breadcrumb-bar" id="dashboard-breadcrumb">
-            <span>LOADING...</span>
-        </div>
-        
+        <div class="breadcrumb-bar" id="dashboard-breadcrumb"><span>LOADING...</span></div>
         <div id="dashboard-status" style="margin-bottom: 20px; font-weight: bold;">Initializing...</div>
         <div id="lessons-container"></div>
-        
-        <!-- DASHBOARD CREDITS -->
         <div style="margin-top: 50px; text-align: center; font-size: 10px; color: #999; border-top: 1px dashed #ccc; padding-top: 10px;">
             Engineered by Abd-Alrahman.Gamal - 01001395058
         </div>
     </div>
 
-    <!-- DRILL VIEW -->
+    <!-- DRILL -->
     <div id="drill-view" class="view">
         <div class="breadcrumb-bar" id="drill-breadcrumb">
-            <span>DRILL</span>
-            <span id="drill-level-indicator">A1</span>
+            <span>DRILL</span><span id="drill-level-indicator">A1</span>
         </div>
-
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <button id="back-btn" style="padding: 10px; font-size: 14px; min-height: 40px; background: #000; color: #fff;">✕ QUIT DRILL</button>
             <div id="lesson-title" style="font-weight: bold; font-size: 14px;"></div>
         </div>
-
-        <div id="timer-sticky-wrapper">
-            <div id="timer-bar"></div>
-        </div>
-
+        <div id="timer-sticky-wrapper"><div id="timer-bar"></div></div>
         <div id="phase-label">PHASE: INITIALIZING</div>
         <div id="step-info" style="text-align: right; font-size: 12px; margin-bottom: 5px;"></div>
-        
         <div id="stage"></div>
-
         <div id="feedback"></div>
-
-        <!-- STICKY FOOTER -->
         <div id="input-area">
             <input type="text" id="user-input" placeholder="TYPE HERE..." autocomplete="off" style="display: none;">
             <div class="action-bar">
@@ -473,8 +297,7 @@
 <script>
     // --- CONSTANTS ---
     const DECAY_MS = 3 * 24 * 60 * 60 * 1000;
-    
-     const LANGUAGES = [
+    const LANGUAGES = [
         { code: "ar", name: "العربية (Arabic)" },
         { code: "de", name: "Deutsch (German)" },
         { code: "en", name: "English" },
@@ -491,33 +314,44 @@
 
     // --- STATE ---
     const appState = {
-        accessCode: '',
-        deviceFingerprint: '',
-        dbProgress: {},
+        accessCode: '', deviceFingerprint: '', dbProgress: {},
         userLanguagePair: { native: null, target: null },
-        selectedLevel: 'ALL', 
-        lessons: [],
-        currentLesson: null,
-        currentLessonData: null,
-        currentLinkIndex: 0,
-        currentStepKey: '1_model',
-        userInput: '',
-        isAnswered: false,
-        timerInterval: null,
-        speechRecognition: null,
-        isListening: false,
-        isShowingCorrectAnswer: false,
-        currentInputSource: 'keyboard',
+        selectedLevel: 'ALL', lessons: [], currentLesson: null, currentLessonData: null,
+        currentLinkIndex: 0, currentStepKey: '1_model', userInput: '', isAnswered: false,
+        timerInterval: null, speechRecognition: null, isListening: false,
+        isShowingCorrectAnswer: false, currentInputSource: 'keyboard',
         reorderState: { mode: null, originalTarget: '', shuffledItems: [], selectedItems: [], availableItems: new Map() },
-        passedLinks: [],
-        mistakeCount: 0,
-        linksPassed: 0,
-        inCumulativeMode: false,
-        inFinalBossMode: false,
-        cumulativeQueue: [],
-        finalBossQueue: [],
-        cumulativeIndex: 0
+        passedLinks: [], mistakeCount: 0, linksPassed: 0,
+        inCumulativeMode: false, inFinalBossMode: false,
+        cumulativeQueue: [], finalBossQueue: [], cumulativeIndex: 0
     };
+
+    // --- INVISIBLE TTS ENGINE (GOOGLE PRIORITY) ---
+    let ttsState = { text: '', speed: 1.0 };
+
+    function speak(text, lang) {
+        if (!text || !window.speechSynthesis) return;
+        window.speechSynthesis.cancel();
+
+        if (ttsState.text === text) {
+            ttsState.speed = (ttsState.speed === 1.0) ? 0.5 : 1.0;
+        } else {
+            ttsState.text = text;
+            ttsState.speed = 1.0;
+        }
+
+        const u = new SpeechSynthesisUtterance(text);
+        u.rate = ttsState.speed;
+        
+        const voices = window.speechSynthesis.getVoices();
+        const candidates = voices.filter(v => v.lang === lang || v.lang.startsWith(lang));
+        let voice = candidates.find(v => v.name.includes("Google")) || candidates[0];
+        
+        if (voice) u.voice = voice;
+        else u.lang = lang;
+
+        window.speechSynthesis.speak(u);
+    }
 
     const elements = {};
     let supabaseClient = null;
@@ -530,9 +364,11 @@
         generateFingerprint();
         populateLanguageSelectors();
         
-        // Initial Navigation Logic
         history.replaceState({ view: 'login-view' }, "", "#login");
         document.getElementById('login-view').classList.add('active');
+
+        const savedCode = localStorage.getItem('PLDE_CODE');
+        if (savedCode) { elements.accessCodeInput.value = savedCode; handleLogin(); }
     });
 
     function cacheElements() {
@@ -570,15 +406,13 @@
         elements.drillLevelInd = document.getElementById('drill-level-indicator');
     }
 
-    // --- NAVIGATION ROUTER (HISTORY API) ---
+    // --- NAVIGATION ---
     function navigateTo(viewId) {
         document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
         const target = document.getElementById(viewId);
         if(target) target.classList.add('active');
-
         if(viewId === 'dashboard-view') updateBreadcrumbs();
         if(viewId === 'drill-view') updateDrillHeader();
-
         history.pushState({ view: viewId }, "", "#" + viewId.replace('-view', ''));
         window.scrollTo(0,0);
     }
@@ -614,15 +448,11 @@
     }
 
     // --- AUTH ---
-    function generateFingerprint() {
-        appState.deviceFingerprint = navigator.userAgent + screen.width + screen.height;
-    }
-    
+    function generateFingerprint() { appState.deviceFingerprint = navigator.userAgent + screen.width + screen.height; }
     function handleLogin() {
         const code = elements.accessCodeInput.value.trim().toUpperCase();
         if (!code) { elements.loginStatus.innerText = "PLEASE ENTER A CODE"; return; }
-        elements.loginBtn.disabled = true;
-        elements.loginStatus.innerText = "VERIFYING...";
+        elements.loginBtn.disabled = true; elements.loginStatus.innerText = "VERIFYING...";
         attemptLogin(code);
     }
     
@@ -641,40 +471,29 @@
             if (!granted) { elements.loginStatus.innerText = "DEVICE LIMIT (MAX 2)"; elements.loginBtn.disabled = false; return; }
             if (update) await supabaseClient.from('user_profiles').update(update).eq('access_code', code);
             
-            appState.accessCode = code;
-            appState.dbProgress = row.progress || {};
-            
+            appState.accessCode = code; appState.dbProgress = row.progress || {};
+            localStorage.setItem('PLDE_CODE', code);
             navigateTo('language-selector-view');
-            
-            checkSavedLanguagePairDropdowns();
-            fetchAvailablePairs();
-            
+            checkSavedLanguagePairDropdowns(); fetchAvailablePairs();
         } catch (e) { elements.loginStatus.innerText = "SYSTEM ERROR"; elements.loginBtn.disabled = false; }
     }
 
     // --- DATA & SYNC ---
-    function getCurrentLevelKey() {
-        return `${appState.userLanguagePair.native}_${appState.userLanguagePair.target}_${appState.selectedLevel}`;
-    }
-
+    function getCurrentLevelKey() { return `${appState.userLanguagePair.native}_${appState.userLanguagePair.target}_${appState.selectedLevel}`; }
     async function saveProgress(lessonId, score) {
         const key = getCurrentLevelKey();
         if (!appState.dbProgress[key]) appState.dbProgress[key] = {};
         const currentEntry = appState.dbProgress[key][lessonId];
         const currentBest = currentEntry ? (currentEntry.score || 0) : 0;
         
-        if (score >= currentBest) {
-             appState.dbProgress[key][lessonId] = { score: score, lastPlayed: Date.now() };
-        } else if (score >= 80 && currentEntry) {
-             currentEntry.lastPlayed = Date.now();
-        }
+        if (score >= currentBest) appState.dbProgress[key][lessonId] = { score: score, lastPlayed: Date.now() };
+        else if (score >= 80 && currentEntry) currentEntry.lastPlayed = Date.now();
 
-        try {
-            await supabaseClient.from('user_profiles').update({ progress: appState.dbProgress }).eq('access_code', appState.accessCode);
-        } catch (e) { console.error("Sync Error", e); }
+        try { await supabaseClient.from('user_profiles').update({ progress: appState.dbProgress }).eq('access_code', appState.accessCode); } 
+        catch (e) { console.error("Sync Error", e); }
     }
 
-    // --- SETUP & UTILS ---
+    // --- SETUP ---
     function populateLanguageSelectors() {
         LANGUAGES.forEach(lang => {
             const o1 = document.createElement('option'); o1.value = lang.code; o1.textContent = lang.name;
@@ -697,10 +516,7 @@
         }
     }
 
-    function initSupabase() {
-        if (window.supabase) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        else alert('Supabase Missing');
-    }
+    function initSupabase() { if (window.supabase) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
 
     async function fetchAvailablePairs() {
         if (!supabaseClient) return;
@@ -723,9 +539,13 @@
             appState.lessons = (data || []).filter(l => {
                 try {
                     const c = (typeof l.content === 'string') ? JSON.parse(l.content) : l.content;
-                    return c.meta && c.meta.native_language === appState.userLanguagePair.native && 
-                           c.meta.target_language === appState.userLanguagePair.target &&
-                           (appState.selectedLevel === 'ALL' || c.meta.level === appState.selectedLevel);
+                    if (!c.meta) return false;
+                    const dbNative = c.meta.native_language || '';
+                    const dbTarget = c.meta.target_language || '';
+                    const matchNative = dbNative.startsWith(appState.userLanguagePair.native);
+                    const matchTarget = dbTarget.startsWith(appState.userLanguagePair.target);
+                    const matchLevel = (appState.selectedLevel === 'ALL' || c.meta.level === appState.selectedLevel);
+                    return matchNative && matchTarget && matchLevel;
                 } catch { return false; }
             });
             renderDashboard();
@@ -764,7 +584,6 @@
         appState.lessons.forEach((lesson, index) => {
             const btn = document.createElement('button');
             btn.className = 'lesson-btn';
-            
             const entry = levelProgress[lesson.id];
             const score = entry ? (entry.score || 0) : 0;
             const lastPlayed = entry ? (entry.lastPlayed || 0) : 0;
@@ -786,8 +605,7 @@
                 btn.classList.add('locked'); btn.disabled = true;
             } else if (isDecayed) {
                 badge = `<span class="score-badge badge-yellow">⚠️ REFRESH (${score}%)</span>`;
-                btn.classList.add('decayed');
-                btn.onclick = () => loadLesson(lesson);
+                btn.classList.add('decayed'); btn.onclick = () => loadLesson(lesson);
             } else if (score >= 90) {
                 badge = `<span class="score-badge badge-green">MASTERED (${score}%)</span>`;
                 btn.onclick = () => loadLesson(lesson);
@@ -808,8 +626,7 @@
         try {
             let c = (typeof lesson.content === 'string') ? JSON.parse(lesson.content) : lesson.content;
             if (!c.links) throw new Error('Bad Data');
-            appState.currentLesson = lesson;
-            appState.currentLessonData = c;
+            appState.currentLesson = lesson; appState.currentLessonData = c;
             
             if(c.meta?.randomize) {
                 const arr = [...c.links];
@@ -817,18 +634,12 @@
                 appState.currentLessonData.links = arr;
             }
 
-            appState.currentLinkIndex = 0;
-            appState.currentStepKey = '1_model';
-            appState.startTime = Date.now();
-            appState.mistakeCount = 0;
-            appState.linksPassed = 0;
-            appState.inCumulativeMode = false;
-            appState.inFinalBossMode = false;
-            appState.passedLinks = [];
-            appState.finalBossQueue = [];
+            appState.currentLinkIndex = 0; appState.currentStepKey = '1_model';
+            appState.startTime = Date.now(); appState.mistakeCount = 0; appState.linksPassed = 0;
+            appState.inCumulativeMode = false; appState.inFinalBossMode = false;
+            appState.passedLinks = []; appState.finalBossQueue = [];
             
-            navigateTo('drill-view');
-            startDrill();
+            navigateTo('drill-view'); startDrill();
         } catch(e) { alert(e.message); }
     }
 
@@ -838,13 +649,12 @@
     }
 
     function renderStep() {
-        stopTimer();
-        resetInput();
-        appState.isShowingCorrectAnswer = false;
+        stopTimer(); resetInput(); appState.isShowingCorrectAnswer = false;
         elements.phaseLabel.classList.remove('cumulative-warning');
         
         const link = appState.currentLessonData.links[appState.currentLinkIndex];
         const step = link.steps[appState.currentStepKey];
+        const meta = appState.currentLessonData.meta;
         
         elements.stepInfo.innerText = `${appState.currentLinkIndex + 1}/${appState.currentLessonData.links.length}`;
         elements.stage.innerHTML = '';
@@ -855,10 +665,10 @@
         else elements.input.style.display = 'block';
 
         switch (step.type) {
-            case 'imprint': renderImprint(link, step); break;
+            case 'imprint': renderImprint(link, step, meta); break;
             case 'multiple_choice': renderMultipleChoice(link, step); break;
             case 'fill_gap': renderFillGap(link, step); break;
-            case 'input_strict': renderInputStrict(link, step); break;
+            case 'input_strict': renderInputStrict(link, step, meta); break;
             case 'sentence_reorder': renderSentenceReorder(link, step); break;
             default: elements.stage.innerHTML = `ERR: ${step.type}`;
         }
@@ -879,215 +689,47 @@
         elements.phaseLabel.innerText = label;
     }
 
-    // --- LOGIC (SHORTENED) ---
-    function validate(val, source='keyboard') {
-        if(appState.isShowingCorrectAnswer) return;
-        stopTimer();
-        appState.currentInputSource = source;
-
-        if(!appState.inCumulativeMode && !appState.inFinalBossMode) {
-             const step = appState.currentLessonData.links[appState.currentLinkIndex].steps[appState.currentStepKey];
-             if(step.type === 'imprint') { nextStep(); return; }
-        }
-
-        const targetLink = appState.inCumulativeMode ? appState.cumulativeQueue[appState.cumulativeIndex] : 
-                           appState.inFinalBossMode ? appState.finalBossQueue[appState.cumulativeIndex] :
-                           appState.currentLessonData.links[appState.currentLinkIndex];
-        
-        const target = targetLink.response.text;
-        appState.userInput = val;
-        
-        const cleanUser = val.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
-        const cleanTarget = target.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
-        
-        let passed = (cleanUser === cleanTarget);
-        if(source === 'voice' && !passed) {
-            if(cleanTarget.length > 3 && cleanUser.includes(cleanTarget)) passed = true;
-        }
-
-        if(passed) pass();
-        else {
-             if(appState.inCumulativeMode || appState.inFinalBossMode) failCumulative();
-             else fail();
-        }
-    }
-
-    function pass() {
-        appState.isAnswered = true;
-        elements.feedback.style.color = 'green';
-        elements.feedback.innerText = "CORRECT";
-        
-        if(!appState.inCumulativeMode && !appState.inFinalBossMode) {
-            const l = appState.currentLessonData.links[appState.currentLinkIndex];
-            if(!appState.passedLinks.some(pl=>pl.trigger.text===l.trigger.text)) appState.passedLinks.push(l);
-        }
-
-        setTimeout(() => {
-            if(appState.inCumulativeMode) { appState.isAnswered=false; elements.feedback.innerText=""; nextCumulativeStep(); }
-            else if(appState.inFinalBossMode) { appState.isAnswered=false; elements.feedback.innerText=""; nextFinalBossStep(); }
-            else nextStep();
-        }, 600);
-    }
-
-    function fail() {
-        stopTimer();
-        if(!appState.inCumulativeMode && !appState.inFinalBossMode) appState.mistakeCount++;
-        document.body.classList.add('fail-flash');
-        setTimeout(()=>document.body.classList.remove('fail-flash'),400);
-        elements.feedback.style.color='red';
-        elements.feedback.innerText="FAIL";
-        setTimeout(()=>{ appState.currentStepKey='1_model'; renderStep(); },1000);
-    }
-
-    function failCumulative() {
-        if(appState.isShowingCorrectAnswer) return;
-        stopTimer();
-        appState.isShowingCorrectAnswer = true;
-        
-        const link = appState.inCumulativeMode ? appState.cumulativeQueue[appState.cumulativeIndex] : appState.finalBossQueue[appState.cumulativeIndex];
-        
-        elements.input.readOnly = true;
-        elements.submitBtn.disabled = true;
-        elements.voiceBtn.disabled = true;
-        elements.feedback.style.color = 'red';
-        elements.feedback.innerText = "WRONG";
-        
-        document.body.classList.add('fail-flash');
-        setTimeout(()=>document.body.classList.remove('fail-flash'),400);
-
-        elements.stage.innerHTML = `
-            <div style="text-align:center;">
-                <div style="color:#666;">YOU SAID: <span style="color:red;">${appState.userInput}</span></div>
-                <div class="correct-answer-display">${link.response.text}</div>
-                <div style="margin-top:20px;">RESTARTING CHAIN...</div>
-            </div>`;
-            
-        setTimeout(() => {
-            appState.cumulativeIndex = 0;
-            appState.isShowingCorrectAnswer = false;
-            if(appState.inFinalBossMode) renderFinalBossStep(); else renderCumulativeStep();
-        }, 2500);
-    }
-
-    function nextStep() {
-        const steps = Object.keys(appState.currentLessonData.links[appState.currentLinkIndex].steps).sort();
-        const currIdx = steps.indexOf(appState.currentStepKey);
-        
-        if(currIdx < steps.length - 1) {
-            appState.currentStepKey = steps[currIdx+1];
-            renderStep();
-        } else {
-            appState.linksPassed++;
-            const interval = appState.currentLessonData.meta.cumulative_interval || 3;
-            if(appState.linksPassed > 0 && appState.linksPassed % interval === 0 && appState.currentLinkIndex < appState.currentLessonData.links.length - 1) {
-                appState.currentLinkIndex++;
-                startCumulativeDrill();
-            } else if(appState.currentLinkIndex < appState.currentLessonData.links.length - 1) {
-                appState.currentLinkIndex++;
-                appState.currentStepKey = Object.keys(appState.currentLessonData.links[appState.currentLinkIndex].steps).sort()[0];
-                renderStep();
-            } else {
-                if(!appState.inFinalBossMode && !appState.inCumulativeMode) startFinalBoss();
-                else showReportCard();
-            }
-        }
-    }
-
-    // --- SUB-ROUTINES (CUMULATIVE & FINAL BOSS) ---
-    function startCumulativeDrill() {
-        appState.inCumulativeMode = true;
-        appState.cumulativeIndex = 0;
-        appState.cumulativeQueue = [...appState.passedLinks];
-        renderCumulativeStep();
-    }
-    function renderCumulativeStep() {
-        stopTimer(); resetInput(); appState.isShowingCorrectAnswer = false;
-        const link = appState.cumulativeQueue[appState.cumulativeIndex];
-        elements.phaseLabel.innerText = "CUMULATIVE REVIEW";
-        elements.phaseLabel.classList.add('cumulative-warning');
-        elements.stage.innerHTML = `<div style="font-size:32px; font-weight:bold; margin-bottom:20px;">${link.trigger.text}</div>`;
-        elements.input.placeholder = "Prove you remember...";
-        startTimer(7);
-    }
-    function nextCumulativeStep() {
-        appState.cumulativeIndex++;
-        if(appState.cumulativeIndex >= appState.cumulativeQueue.length) {
-            appState.inCumulativeMode = false;
-            if(appState.currentLinkIndex < appState.currentLessonData.links.length) {
-                const steps = Object.keys(appState.currentLessonData.links[appState.currentLinkIndex].steps).sort();
-                appState.currentStepKey = steps[0];
-                renderStep();
-            } else startFinalBoss();
-        } else renderCumulativeStep();
-    }
-
-    function startFinalBoss() {
-        appState.inFinalBossMode = true;
-        appState.finalBossQueue = [...appState.currentLessonData.links];
-        appState.cumulativeIndex = 0;
-        renderFinalBossStep();
-    }
-    function renderFinalBossStep() {
-        stopTimer(); resetInput(); appState.isShowingCorrectAnswer = false;
-        const link = appState.finalBossQueue[appState.cumulativeIndex];
-        elements.phaseLabel.innerText = "FINAL BOSS";
-        elements.stage.innerHTML = `<div style="font-size:32px; font-weight:bold; margin-bottom:20px;">${link.trigger.text}</div>`;
-        elements.input.placeholder = "One last time...";
-        startTimer(7);
-    }
-    function nextFinalBossStep() {
-        appState.cumulativeIndex++;
-        if(appState.cumulativeIndex >= appState.finalBossQueue.length) {
-            appState.inFinalBossMode = false;
-            showReportCard();
-        } else renderFinalBossStep();
-    }
-
-    function showReportCard() {
-        const totalSteps = appState.currentLessonData.links.length * 5; 
-        const totalAttempts = totalSteps + appState.mistakeCount;
-        const accuracy = Math.round((totalSteps / totalAttempts) * 100);
-        
-        let grade = 'F', color = 'red';
-        if (accuracy >= 95) { grade = 'S'; color = 'green'; }
-        else if (accuracy >= 90) { grade = 'A'; color = 'green'; }
-        else if (accuracy >= 80) grade = 'B'; 
-        else if (accuracy >= 70) grade = 'C';
-        
-        if (color === 'green') saveProgress(appState.currentLesson.id, accuracy);
-
-        elements.stage.innerHTML = `
-            <div class="report-card">
-                <h1>COMPLETE</h1>
-                <div class="report-grade" style="color: ${color}">${grade}</div>
-                <div class="report-stat">ACCURACY: ${accuracy}%</div>
-                <button onclick="history.back()" style="margin-top: 20px; width: 100%;">BACK TO DASHBOARD</button>
-            </div>`;
-            
-        elements.phaseLabel.innerText = "REPORT CARD";
-        elements.input.style.display = 'none';
-        elements.voiceBtn.style.display = 'none';
-        elements.submitBtn.style.display = 'none';
-        elements.timerBar.style.width = '0%';
-    }
-
     // --- RENDER HELPERS ---
-    function renderImprint(link, step) {
+    function renderImprint(link, step, meta) {
         let html = '';
-        if (step.display) {
-            step.display.forEach(field => {
-                if (field === 'trigger') html += renderMedia(link.trigger, 'TRIGGER');
-                if (field === 'response') html += renderMedia(link.response, 'RESPONSE');
-                if (field === 'audio' && link.response.audio_url) html += `<audio controls src="${link.response.audio_url}" autoplay style="margin-top:10px; height:30px;"></audio>`;
-            });
-        } else {
-            html += renderMedia(link.trigger) + renderMedia(link.response);
-        }
+        html += renderMedia(link.trigger, 'TRIGGER', meta.native_language);
+        html += renderMedia(link.response, 'RESPONSE', meta.target_language, link.response.translation);
+        
         elements.stage.innerHTML = html;
         elements.submitBtn.innerText = "READY";
         elements.submitBtn.disabled = false;
         elements.input.style.display = 'none';
         elements.voiceBtn.style.display = 'none';
+    }
+
+    function renderInputStrict(link, step, meta) {
+        let html = `<div style="font-size:32px; font-weight:bold; margin-bottom:20px;">`;
+        html += `<span class="speakable" onclick="speak('${link.trigger.text.replace(/'/g, "\\'")}', '${meta.native_language}')">${link.trigger.text}</span>`;
+        if (link.trigger.translation) html += `<div class="translation-text">${link.trigger.translation}</div>`;
+        html += `</div>`;
+        
+        elements.stage.innerHTML = html;
+        elements.input.style.display = 'block';
+        elements.submitBtn.style.display = 'inline-block';
+        elements.submitBtn.disabled = true;
+        elements.voiceBtn.style.display = 'inline-block';
+        elements.submitBtn.innerText = "SUBMIT";
+    }
+
+    function renderMedia(obj, label, lang, translation) {
+        if (!obj) return '';
+        let out = '<div style="margin: 15px 0;">';
+        if (label) out += `<div style="font-size:12px; letter-spacing:2px; margin-bottom:5px;">${label}</div>`;
+        
+        if (obj.text) {
+            const safeText = obj.text.replace(/'/g, "\\'");
+            out += `<div class="speakable" style="font-size:28px; font-weight:bold;" onclick="speak('${safeText}', '${lang}')">${obj.text}</div>`;
+        }
+        
+        if (translation) out += `<div class="translation-text">${translation}</div>`;
+        if (obj.audio_url) out += `<audio controls src="${obj.audio_url}" autoplay style="margin-top:10px; height:30px;"></audio>`;
+        out += '</div>';
+        return out;
     }
 
     function renderMultipleChoice(link, step) {
@@ -1106,15 +748,6 @@
         elements.input.style.display = 'block';
         elements.submitBtn.style.display = 'inline-block';
         elements.submitBtn.disabled = true;
-        elements.submitBtn.innerText = "SUBMIT";
-    }
-
-    function renderInputStrict(link, step) {
-        elements.stage.innerHTML = `<div style="font-size:32px; font-weight:bold; margin-bottom:20px;">${link.trigger.text}</div>`;
-        elements.input.style.display = 'block';
-        elements.submitBtn.style.display = 'inline-block';
-        elements.submitBtn.disabled = true;
-        elements.voiceBtn.style.display = 'inline-block';
         elements.submitBtn.innerText = "SUBMIT";
     }
 
@@ -1194,17 +827,216 @@
         updateReorderUI();
     };
 
-    function renderMedia(obj, label) {
-        if (!obj) return '';
-        let out = '<div style="margin: 15px 0;">';
-        if (label) out += `<div style="font-size:12px; letter-spacing:2px; margin-bottom:5px;">${label}</div>`;
-        if (obj.text) out += `<div style="font-size:28px; font-weight:bold;">${obj.text}</div>`;
-        if (obj.audio_url) out += `<audio controls src="${obj.audio_url}" autoplay style="margin-top:10px; height:30px;"></audio>`;
-        out += '</div>';
-        return out;
+    // --- LEVENSHTEIN DISTANCE HELPER ---
+    function getLevenshteinDistance(a, b) {
+        if (a.length === 0) return b.length;
+        if (b.length === 0) return a.length;
+        const matrix = [];
+        for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+        for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+        for (let i = 1; i <= b.length; i++) {
+            for (let j = 1; j <= a.length; j++) {
+                const cost = a[j - 1] === b[i - 1] ? 0 : 1;
+                matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
+            }
+        }
+        return matrix[b.length][a.length];
     }
 
-    // --- EVENT LISTENERS ---
+    // --- VOICE LOGIC (KOREAN SUPPORT) ---
+    function isVoiceAnswerAcceptable(user, target) {
+        const u = user.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim().toLowerCase();
+        const t = target.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim().toLowerCase();
+
+        if (u === t) return true;
+
+        // Korean Logic (Hangul Range)
+        if (/[\u3131-\uD79D]/.test(t)) {
+            const dist = getLevenshteinDistance(u, t);
+            if (t.length <= 3) return dist <= 1; 
+            return dist <= 2;
+        }
+
+        // Latin Logic
+        if (t.length > 3 && u.includes(t)) return true;
+        if (t.length <= 4 && u.length <= 6 && u.includes(t)) return true;
+
+        return false;
+    }
+
+    // --- VALIDATION ---
+    function validate(val, source='keyboard') {
+        if(appState.isShowingCorrectAnswer) return;
+        stopTimer();
+        appState.currentInputSource = source;
+
+        if(!appState.inCumulativeMode && !appState.inFinalBossMode) {
+             const step = appState.currentLessonData.links[appState.currentLinkIndex].steps[appState.currentStepKey];
+             if(step.type === 'imprint') { nextStep(); return; }
+        }
+
+        const targetLink = appState.inCumulativeMode ? appState.cumulativeQueue[appState.cumulativeIndex] : 
+                           appState.inFinalBossMode ? appState.finalBossQueue[appState.cumulativeIndex] :
+                           appState.currentLessonData.links[appState.currentLinkIndex];
+        
+        const target = targetLink.response.text;
+        appState.userInput = val;
+        
+        let passed = false;
+        if(source === 'voice') {
+            passed = isVoiceAnswerAcceptable(val, target);
+        } else {
+            const cleanUser = val.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
+            const cleanTarget = target.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
+            passed = (cleanUser === cleanTarget);
+        }
+
+        if(passed) pass();
+        else {
+             if(appState.inCumulativeMode || appState.inFinalBossMode) failCumulative();
+             else fail();
+        }
+    }
+
+    function pass() {
+        appState.isAnswered = true;
+        elements.feedback.style.color = 'green';
+        elements.feedback.innerText = "CORRECT";
+        
+        if(!appState.inCumulativeMode && !appState.inFinalBossMode) {
+            const l = appState.currentLessonData.links[appState.currentLinkIndex];
+            if(!appState.passedLinks.some(pl=>pl.trigger.text===l.trigger.text)) appState.passedLinks.push(l);
+        }
+
+        setTimeout(() => {
+            if(appState.inCumulativeMode) { appState.isAnswered=false; elements.feedback.innerText=""; nextCumulativeStep(); }
+            else if(appState.inFinalBossMode) { appState.isAnswered=false; elements.feedback.innerText=""; nextFinalBossStep(); }
+            else nextStep();
+        }, 600);
+    }
+
+    function fail() {
+        stopTimer();
+        if(!appState.inCumulativeMode && !appState.inFinalBossMode) appState.mistakeCount++;
+        document.body.classList.add('fail-flash');
+        setTimeout(()=>document.body.classList.remove('fail-flash'),400);
+        elements.feedback.style.color='red';
+        elements.feedback.innerText="FAIL";
+        
+        setTimeout(()=>{ appState.currentStepKey='1_model'; renderStep(); }, 1000);
+    }
+
+    function failCumulative() {
+        if(appState.isShowingCorrectAnswer) return;
+        stopTimer();
+        appState.isShowingCorrectAnswer = true;
+        
+        const link = appState.inCumulativeMode ? appState.cumulativeQueue[appState.cumulativeIndex] : appState.finalBossQueue[appState.cumulativeIndex];
+        const meta = appState.currentLessonData.meta;
+
+        elements.input.readOnly = true;
+        elements.submitBtn.disabled = true;
+        elements.voiceBtn.disabled = true;
+        elements.feedback.style.color = 'red';
+        elements.feedback.innerText = "WRONG";
+        
+        speak(link.response.text, meta.target_language);
+        
+        document.body.classList.add('fail-flash');
+        setTimeout(()=>document.body.classList.remove('fail-flash'),400);
+
+        elements.stage.innerHTML = `
+            <div style="text-align:center;">
+                <div style="color:#666;">YOU SAID: <span style="color:red;">${appState.userInput}</span></div>
+                <div class="correct-answer-display">${link.response.text}</div>
+                <div style="margin-top:20px;">RESTARTING CHAIN...</div>
+            </div>`;
+            
+        setTimeout(() => {
+            appState.cumulativeIndex = 0;
+            appState.isShowingCorrectAnswer = false;
+            if(appState.inFinalBossMode) renderFinalBossStep(); else renderCumulativeStep();
+        }, 2500);
+    }
+
+    function nextStep() {
+        const steps = Object.keys(appState.currentLessonData.links[appState.currentLinkIndex].steps).sort();
+        const currIdx = steps.indexOf(appState.currentStepKey);
+        
+        if(currIdx < steps.length - 1) {
+            appState.currentStepKey = steps[currIdx+1];
+            renderStep();
+        } else {
+            appState.linksPassed++;
+            const interval = appState.currentLessonData.meta.cumulative_interval || 3;
+            if(appState.linksPassed > 0 && appState.linksPassed % interval === 0 && appState.currentLinkIndex < appState.currentLessonData.links.length - 1) {
+                appState.currentLinkIndex++;
+                startCumulativeDrill();
+            } else if(appState.currentLinkIndex < appState.currentLessonData.links.length - 1) {
+                appState.currentLinkIndex++;
+                appState.currentStepKey = Object.keys(appState.currentLessonData.links[appState.currentLinkIndex].steps).sort()[0];
+                renderStep();
+            } else {
+                if(!appState.inFinalBossMode && !appState.inCumulativeMode) startFinalBoss();
+                else showReportCard();
+            }
+        }
+    }
+
+    // --- SUB-ROUTINES (CUMULATIVE & FINAL BOSS) ---
+    function startCumulativeDrill() {
+        appState.inCumulativeMode = true; appState.cumulativeIndex = 0;
+        appState.cumulativeQueue = [...appState.passedLinks];
+        renderCumulativeStep();
+    }
+    function renderCumulativeStep() {
+        stopTimer(); resetInput(); appState.isShowingCorrectAnswer = false;
+        const link = appState.cumulativeQueue[appState.cumulativeIndex];
+        elements.phaseLabel.innerText = "CUMULATIVE REVIEW";
+        elements.phaseLabel.classList.add('cumulative-warning');
+        elements.stage.innerHTML = `<div style="font-size:32px; font-weight:bold; margin-bottom:20px;">${link.trigger.text}</div>`;
+        elements.input.placeholder = "Prove you remember...";
+        startTimer(7);
+    }
+    function nextCumulativeStep() {
+        appState.cumulativeIndex++;
+        if(appState.cumulativeIndex >= appState.cumulativeQueue.length) {
+            appState.inCumulativeMode = false;
+            if(appState.currentLinkIndex < appState.currentLessonData.links.length) {
+                const steps = Object.keys(appState.currentLessonData.links[appState.currentLinkIndex].steps).sort();
+                appState.currentStepKey = steps[0];
+                renderStep();
+            } else startFinalBoss();
+        } else renderCumulativeStep();
+    }
+
+    function startFinalBoss() {
+        appState.inFinalBossMode = true; appState.finalBossQueue = [...appState.currentLessonData.links];
+        appState.cumulativeIndex = 0;
+        renderFinalBossStep();
+    }
+    function renderFinalBossStep() {
+        stopTimer(); resetInput(); appState.isShowingCorrectAnswer = false;
+        const link = appState.finalBossQueue[appState.cumulativeIndex];
+        elements.phaseLabel.innerText = "FINAL BOSS";
+        elements.stage.innerHTML = `<div style="font-size:32px; font-weight:bold; margin-bottom:20px;">${link.trigger.text}</div>`;
+        elements.input.placeholder = "One last time...";
+        startTimer(7);
+    }
+    function nextFinalBossStep() {
+        appState.cumulativeIndex++;
+        if(appState.cumulativeIndex >= appState.finalBossQueue.length) {
+            appState.inFinalBossMode = false;
+            showReportCard();
+        } else renderFinalBossStep();
+    }
+
+    window.exitDrill = () => {
+        fetchFilteredLessons(); 
+        history.back(); 
+    };
+
+    // --- EVENTS ---
     function setupEvents() {
         elements.loginBtn.onclick = handleLogin;
         elements.accessCodeInput.onkeydown = (e) => { if(e.key==='Enter') handleLogin(); };
@@ -1278,7 +1110,6 @@
         elements.input.value = ''; elements.input.readOnly = false;
         elements.voiceBtn.disabled = false; elements.submitBtn.disabled = true;
         elements.feedback.innerText = '';
-        
         elements.submitBtn.style.display = 'inline-block';
         elements.voiceBtn.style.display = 'inline-block';
         elements.input.style.display = 'block';
