@@ -113,6 +113,15 @@
         .translation-text {
             font-size: 0.9rem; color: #666; font-style: italic; margin-top: 10px; font-weight: normal;
         }
+        
+        /* NEW: Director Mode Styling */
+        .phonetic-text {
+            font-family: 'Courier New', monospace;
+            color: #800080; /* Purple */
+            font-size: 0.9rem;
+            margin-top: 5px;
+            font-weight: bold;
+        }
 
         /* STICKY ACTION FOOTER */
         #input-area { 
@@ -295,6 +304,153 @@
 </div>
 
 <script>
+    // --- UNIVERSAL KOREAN MATCHER (ADVANCED) ---
+    class UniversalKoreanMatcher {
+      constructor(options = {}) {
+        this.threshold = options.threshold || 0.7;
+        this.useMultipleAlternatives = options.useMultipleAlternatives !== false;
+        this.particles = [
+          '은', '는', '이', '가', '을', '를', '의', '에', '에서', '로', '으로',
+          '과', '와', '도', '만', '까지', '부터', '한테', '께', '이에요', '예요',
+          '입니다', '이야', '야', '이다', '라고', '고', '요', '습니다', '합니다'
+        ];
+        this.phoneticMap = {
+          'ㄲ': 'ㄱ', 'ㅋ': 'ㄱ',
+          'ㄸ': 'ㄷ', 'ㅌ': 'ㄷ',
+          'ㅃ': 'ㅂ', 'ㅍ': 'ㅂ',
+          'ㅆ': 'ㅅ',
+          'ㅉ': 'ㅈ', 'ㅊ': 'ㅈ'
+        };
+      }
+
+      match(spoken, correct, options = {}) {
+        if (!spoken || !correct) return this.createResult(false, 0);
+        const spokenVariants = this.generateVariants(spoken);
+        const correctVariants = this.generateVariants(correct);
+        let bestMatch = { similarity: 0, method: 'none', variant: null };
+
+        for (const sv of spokenVariants) {
+          for (const cv of correctVariants) {
+            if (sv === cv) return this.createResult(true, 1.0, 'exact', sv, cv);
+            const similarity = this.calculateSimilarity(sv, cv);
+            if (similarity > bestMatch.similarity) bestMatch = { similarity, method: 'fuzzy', spokenVariant: sv, correctVariant: cv };
+            if (cv.length > 3 && sv.includes(cv)) {
+              const score = 0.85; if (score > bestMatch.similarity) bestMatch = { similarity: score, method: 'contains', spokenVariant: sv, correctVariant: cv };
+            }
+            if (sv.length > 3 && cv.includes(sv)) {
+              const score = 0.85; if (score > bestMatch.similarity) bestMatch = { similarity: score, method: 'contained', spokenVariant: sv, correctVariant: cv };
+            }
+          }
+        }
+        const threshold = options.threshold || this.threshold;
+        const isMatch = bestMatch.similarity >= threshold;
+        return this.createResult(isMatch, bestMatch.similarity, bestMatch.method, bestMatch.spokenVariant, bestMatch.correctVariant);
+      }
+
+      generateVariants(text) {
+        const variants = new Set();
+        variants.add(text);
+        const normalized = this.deepNormalize(text);
+        variants.add(normalized);
+        const withoutParticles = this.stripParticles(normalized);
+        variants.add(withoutParticles);
+        const phonetic = this.phoneticNormalize(normalized);
+        variants.add(phonetic);
+        const phoneticNoParticles = this.stripParticles(phonetic);
+        variants.add(phoneticNoParticles);
+        const noSpaces = normalized.replace(/\s+/g, '');
+        variants.add(noSpaces);
+        const jamo = this.decomposeToJamo(normalized);
+        variants.add(jamo);
+        return Array.from(variants).filter(v => v && v.length > 0);
+      }
+
+      deepNormalize(text) {
+        return text.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.,!?~·]/g, '').normalize('NFC');
+      }
+
+      stripParticles(text) {
+        let result = text;
+        const sorted = [...this.particles].sort((a, b) => b.length - a.length);
+        for (const particle of sorted) {
+          if (result.endsWith(particle)) result = result.slice(0, -particle.length);
+          const words = result.split(' ');
+          result = words.map(word => {
+            if (word.endsWith(particle) && word.length > particle.length) return word.slice(0, -particle.length);
+            return word;
+          }).join(' ');
+        }
+        return result.trim();
+      }
+
+      phoneticNormalize(text) {
+        let result = text;
+        for (const [variant, base] of Object.entries(this.phoneticMap)) {
+          result = result.replace(new RegExp(variant, 'g'), base);
+        }
+        return result;
+      }
+
+      decomposeToJamo(text) {
+        const CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+        const JUNG = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
+        const JONG = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
+        let result = '';
+        for (const char of text) {
+          const code = char.charCodeAt(0);
+          if (code >= 0xAC00 && code <= 0xD7A3) {
+            const syllableIndex = code - 0xAC00;
+            const choIndex = Math.floor(syllableIndex / 588);
+            const jungIndex = Math.floor((syllableIndex % 588) / 28);
+            const jongIndex = syllableIndex % 28;
+            result += CHO[choIndex] + JUNG[jungIndex] + JONG[jongIndex];
+          } else {
+            result += char;
+          }
+        }
+        return result;
+      }
+
+      calculateSimilarity(str1, str2) {
+        if (str1 === str2) return 1.0;
+        const longer = str1.length > str2.length ? str1 : str2;
+        if (longer.length === 0) return 1.0;
+        const distance = this.levenshteinDistance(str1, str2);
+        return (longer.length - distance) / longer.length;
+      }
+
+      levenshteinDistance(str1, str2) {
+        const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+        for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+        for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+        for (let j = 1; j <= str2.length; j++) {
+          for (let i = 1; i <= str1.length; i++) {
+            const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+            matrix[j][i] = Math.min(matrix[j][i - 1] + 1, matrix[j - 1][i] + 1, matrix[j - 1][i - 1] + indicator);
+          }
+        }
+        return matrix[str2.length][str1.length];
+      }
+
+      createResult(match, confidence, method = 'none', spokenVariant = null, correctVariant = null) {
+        return { match, confidence: Math.round(confidence * 100) / 100, method, debug: { spokenVariant, correctVariant } };
+      }
+
+      matchWithAlternatives(alternatives, correct, options = {}) {
+        let bestResult = this.createResult(false, 0);
+        for (const alt of alternatives) {
+          const result = this.match(alt.transcript, correct, options);
+          const weightedConfidence = result.confidence * (alt.confidence || 1.0);
+          if (weightedConfidence > bestResult.confidence) {
+            bestResult = { ...result, confidence: weightedConfidence, originalTranscript: alt.transcript, sttConfidence: alt.confidence };
+          }
+        }
+        return bestResult;
+      }
+    }
+
+    const koreanMatcher = new UniversalKoreanMatcher();
+
     // --- CONSTANTS ---
     const DECAY_MS = 3 * 24 * 60 * 60 * 1000;
     const LANGUAGES = [
@@ -323,7 +479,8 @@
         reorderState: { mode: null, originalTarget: '', shuffledItems: [], selectedItems: [], availableItems: new Map() },
         passedLinks: [], mistakeCount: 0, linksPassed: 0,
         inCumulativeMode: false, inFinalBossMode: false,
-        cumulativeQueue: [], finalBossQueue: [], cumulativeIndex: 0
+        cumulativeQueue: [], finalBossQueue: [], cumulativeIndex: 0,
+        voiceCandidates: [] 
     };
 
     // --- INVISIBLE TTS ENGINE (GOOGLE PRIORITY) ---
@@ -692,8 +849,13 @@
     // --- RENDER HELPERS ---
     function renderImprint(link, step, meta) {
         let html = '';
-        html += renderMedia(link.trigger, 'TRIGGER', meta.native_language);
-        html += renderMedia(link.response, 'RESPONSE', meta.target_language, link.response.translation);
+        const showText = meta.show_text !== false; // Default true
+        
+        // Trigger (Native) - usually text is always shown for native side in imprint unless specified
+        html += renderMedia(link.trigger, 'TRIGGER', meta.native_language, link.trigger.translation, null, true); 
+        
+        // Response (Target) - respect show_text
+        html += renderMedia(link.response, 'RESPONSE', meta.target_language, link.response.translation, link.response.phonetic, showText);
         
         elements.stage.innerHTML = html;
         elements.submitBtn.innerText = "READY";
@@ -703,9 +865,29 @@
     }
 
     function renderInputStrict(link, step, meta) {
+        // Strict Input shows Trigger (Native) -> User types Target
+        // Trigger is usually visible
+        const showText = meta.show_text !== false; 
+        const showTrans = meta.show_translation === true;
+        const showPhone = meta.show_phonetic === true;
+
         let html = `<div style="font-size:32px; font-weight:bold; margin-bottom:20px;">`;
-        html += `<span class="speakable" onclick="speak('${link.trigger.text.replace(/'/g, "\\'")}', '${meta.native_language}')">${link.trigger.text}</span>`;
-        if (link.trigger.translation) html += `<div class="translation-text">${link.trigger.translation}</div>`;
+        
+        // Trigger
+        if (showText) {
+             html += `<span class="speakable" onclick="speak('${link.trigger.text.replace(/'/g, "\\'")}', '${meta.native_language}')">${link.trigger.text}</span>`;
+        }
+        
+        // Translation of Trigger (Rare but possible)
+        if (link.trigger.translation && showTrans) {
+            html += `<div class="translation-text">${link.trigger.translation}</div>`;
+        }
+        
+        // Phonetic of Trigger
+        if (link.trigger.phonetic && showPhone) {
+             html += `<div class="phonetic-text">${link.trigger.phonetic}</div>`;
+        }
+
         html += `</div>`;
         
         elements.stage.innerHTML = html;
@@ -716,17 +898,31 @@
         elements.submitBtn.innerText = "SUBMIT";
     }
 
-    function renderMedia(obj, label, lang, translation) {
+    function renderMedia(obj, label, lang, translation, phonetic, showText = true) {
         if (!obj) return '';
+        const meta = appState.currentLessonData.meta;
+        const showTrans = meta.show_translation === true;
+        const showPhone = meta.show_phonetic === true;
+
         let out = '<div style="margin: 15px 0;">';
         if (label) out += `<div style="font-size:12px; letter-spacing:2px; margin-bottom:5px;">${label}</div>`;
         
-        if (obj.text) {
+        // Text Visibility
+        if (obj.text && showText) {
             const safeText = obj.text.replace(/'/g, "\\'");
             out += `<div class="speakable" style="font-size:28px; font-weight:bold;" onclick="speak('${safeText}', '${lang}')">${obj.text}</div>`;
         }
         
-        if (translation) out += `<div class="translation-text">${translation}</div>`;
+        // Translation
+        if (translation && showTrans) {
+            out += `<div class="translation-text">${translation}</div>`;
+        }
+
+        // Phonetic
+        if (phonetic && showPhone) {
+            out += `<div class="phonetic-text">${phonetic}</div>`;
+        }
+        
         if (obj.audio_url) out += `<audio controls src="${obj.audio_url}" autoplay style="margin-top:10px; height:30px;"></audio>`;
         out += '</div>';
         return out;
@@ -827,43 +1023,6 @@
         updateReorderUI();
     };
 
-    // --- LEVENSHTEIN DISTANCE HELPER ---
-    function getLevenshteinDistance(a, b) {
-        if (a.length === 0) return b.length;
-        if (b.length === 0) return a.length;
-        const matrix = [];
-        for (let i = 0; i <= b.length; i++) matrix[i] = [i];
-        for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
-        for (let i = 1; i <= b.length; i++) {
-            for (let j = 1; j <= a.length; j++) {
-                const cost = a[j - 1] === b[i - 1] ? 0 : 1;
-                matrix[i][j] = Math.min(matrix[i - 1][j] + 1, matrix[i][j - 1] + 1, matrix[i - 1][j - 1] + cost);
-            }
-        }
-        return matrix[b.length][a.length];
-    }
-
-    // --- VOICE LOGIC (KOREAN SUPPORT) ---
-    function isVoiceAnswerAcceptable(user, target) {
-        const u = user.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim().toLowerCase();
-        const t = target.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").trim().toLowerCase();
-
-        if (u === t) return true;
-
-        // Korean Logic (Hangul Range)
-        if (/[\u3131-\uD79D]/.test(t)) {
-            const dist = getLevenshteinDistance(u, t);
-            if (t.length <= 3) return dist <= 1; 
-            return dist <= 2;
-        }
-
-        // Latin Logic
-        if (t.length > 3 && u.includes(t)) return true;
-        if (t.length <= 4 && u.length <= 6 && u.includes(t)) return true;
-
-        return false;
-    }
-
     // --- VALIDATION ---
     function validate(val, source='keyboard') {
         if(appState.isShowingCorrectAnswer) return;
@@ -881,10 +1040,26 @@
         
         const target = targetLink.response.text;
         appState.userInput = val;
+        const meta = appState.currentLessonData.meta;
         
         let passed = false;
         if(source === 'voice') {
-            passed = isVoiceAnswerAcceptable(val, target);
+            if(meta && (meta.target_language.startsWith('ko'))) {
+                // Use Advanced Korean Matcher
+                const result = koreanMatcher.matchWithAlternatives(appState.voiceCandidates, target, {
+                    threshold: meta.voice_threshold || 0.7 
+                });
+                passed = result.match;
+            } else {
+                // Use Generic Similarity from KoreanMatcher class (it handles simple strings too)
+                // Normalize first
+                const cleanUser = val.trim().toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+                const cleanTarget = target.trim().toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+                
+                const similarity = koreanMatcher.calculateSimilarity(cleanUser, cleanTarget);
+                // Use threshold from meta, or default to 0.8
+                passed = similarity >= (meta.voice_threshold || 0.8);
+            }
         } else {
             const cleanUser = val.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
             const cleanTarget = target.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
@@ -923,6 +1098,7 @@
         elements.feedback.style.color='red';
         elements.feedback.innerText="FAIL";
         
+        // REFINED FAIL LOGIC: No auto-play on normal drill failure
         setTimeout(()=>{ appState.currentStepKey='1_model'; renderStep(); }, 1000);
     }
 
@@ -940,6 +1116,7 @@
         elements.feedback.style.color = 'red';
         elements.feedback.innerText = "WRONG";
         
+        // AUTO-PLAY TTS FOR CUMULATIVE
         speak(link.response.text, meta.target_language);
         
         document.body.classList.add('fail-flash');
@@ -1070,15 +1247,23 @@
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         const sr = new SR();
         sr.continuous = false; sr.interimResults = true;
+        sr.maxAlternatives = 5; // UPGRADE: Capture multiple attempts
         
         sr.onresult = (e) => {
-            const t = e.results[e.results.length-1][0].transcript;
-            if(e.results[e.results.length-1].isFinal) {
+            const results = e.results[e.results.length-1];
+            if(results.isFinal) {
+                // UPGRADE: Store all alternatives
+                appState.voiceCandidates = Array.from(results).map(r => ({
+                    transcript: r.transcript,
+                    confidence: r.confidence
+                }));
+                
+                const t = results[0].transcript;
                 elements.input.value = t; appState.userInput = t;
                 elements.submitBtn.disabled = false;
                 validate(t, 'voice');
             } else {
-                elements.input.value = t;
+                elements.input.value = results[0].transcript;
             }
         };
         sr.onend = () => { appState.isListening = false; elements.voiceBtn.classList.remove('voice-listening'); elements.voiceBtn.innerText="🎤 VOICE"; };
