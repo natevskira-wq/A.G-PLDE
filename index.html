@@ -304,21 +304,17 @@
 </div>
 
 <script>
-    // --- UNIVERSAL KOREAN MATCHER ---
+    // --- UNIVERSAL KOREAN MATCHER (V3 - ULTRA FORGIVING WITH SINGLE-SYLLABLE PATCH) ---
     class UniversalKoreanMatcher {
       constructor(options = {}) {
         this.threshold = options.threshold || 0.7;
         this.useMultipleAlternatives = options.useMultipleAlternatives !== false;
-        
-        // Comprehensive list of particles and endings to strip
         this.particles = [
           '은', '는', '이', '가', '을', '를', '의', '에', '에서', '로', '으로',
           '과', '와', '도', '만', '까지', '부터', '한테', '께', '이에요', '예요',
           '입니다', '이야', '야', '이다', '라고', '고', '요', '습니다', '합니다',
           '죠', '나', '니', '시', '세요' 
         ];
-        
-        // Phonetic mappings for sound-alike consonants
         this.phoneticMap = {
           'ㄲ': 'ㄱ', 'ㅋ': 'ㄱ', 'ㄸ': 'ㄷ', 'ㅌ': 'ㄷ', 'ㅃ': 'ㅂ', 'ㅍ': 'ㅂ',
           'ㅆ': 'ㅅ', 'ㅉ': 'ㅈ', 'ㅊ': 'ㅈ', '녜': '네'
@@ -332,22 +328,31 @@
         const correctVariants = this.generateVariants(correct);
         let bestMatch = { similarity: 0, method: 'none', variant: null };
 
+        // 0. SINGLE SYLLABLE MERCY (New Patch)
+        // If target is 1 char, check if spoken text *contains* the vowel sound of that char.
+        // Or if the first char of spoken matches the vowel of target.
+        if (correct.length === 1 && spoken.length > 0) {
+            const targetJamo = this.decomposeToJamo(correct);
+            const spokenJamo = this.decomposeToJamo(spoken.charAt(0)); // Check first char of input
+            
+            // Extract Middle Jamo (Vowel) - it's the 2nd char in the decomposed string
+            // Structure: Cho + Jung + Jong. We want Jung.
+            if (targetJamo.length >= 2 && spokenJamo.length >= 2) {
+                if (targetJamo[1] === spokenJamo[1]) {
+                    return this.createResult(true, 1.0, 'single-syllable-vowel-match');
+                }
+            }
+        }
+
         for (const sv of spokenVariants) {
           for (const cv of correctVariants) {
             // 1. EXACT MATCH
             if (sv === cv) return this.createResult(true, 1.0, 'exact', sv, cv);
 
-            // 2. REPETITION & CONTAINMENT (V3 Upgrade)
-            // If target is inside spoken, or spoken is inside target
-            // Logic: "네네" matches "네", "아... 사과요" matches "사과"
+            // 2. REPETITION & CONTAINMENT
             if (sv.includes(cv) || cv.includes(sv)) {
-                // Calculate ratio to prevent "A" matching "Apple" (too short)
-                // But allow "Ne" matching "Ne ne"
                 const lenRatio = Math.min(sv.length, cv.length) / Math.max(sv.length, cv.length);
-                
-                // If it matches at least 40% of the phrase length, or is very short but contained
                 if (lenRatio > 0.4 || (cv.length <= 2 && sv.includes(cv))) {
-                    // Force a high score to bypass strict thresholds
                     const score = 0.9;
                     if (score > bestMatch.similarity) {
                         bestMatch = { similarity: score, method: 'contains', spokenVariant: sv, correctVariant: cv };
@@ -356,7 +361,6 @@
             }
 
             // 3. SHORT WORD TOLERANCE
-            // For words <= 3 chars, allow 1 char error regardless of %
             const dist = this.levenshteinDistance(sv, cv);
             if (cv.length <= 3 && dist <= 1) {
                  const score = 0.9;
@@ -383,57 +387,33 @@
       generateVariants(text) {
         const variants = new Set();
         variants.add(text);
-        
-        // Deep Normalize (NFC, lowercase, no punctuation)
         const normalized = this.deepNormalize(text);
         variants.add(normalized);
-        
-        // Strip Particles
         const withoutParticles = this.stripParticles(normalized);
         variants.add(withoutParticles);
-        
-        // Phonetic Normalization
         const phonetic = this.phoneticNormalize(normalized);
         variants.add(phonetic);
-        
-        // Phonetic without particles
         const phoneticNoParticles = this.stripParticles(phonetic);
         variants.add(phoneticNoParticles);
-        
-        // No Spaces
         const noSpaces = normalized.replace(/\s+/g, '');
         variants.add(noSpaces);
-        
-        // Jamo Decomposition (Alphabet Soup)
         const jamo = this.decomposeToJamo(normalized);
         variants.add(jamo);
-
         return Array.from(variants).filter(v => v && v.length > 0);
       }
 
       deepNormalize(text) {
-        return text.trim().toLowerCase()
-          .replace(/\s+/g, ' ')
-          .replace(/[.,!?~·]/g, '')
-          .normalize('NFC');
+        return text.trim().toLowerCase().replace(/\s+/g, ' ').replace(/[.,!?~·]/g, '').normalize('NFC');
       }
 
       stripParticles(text) {
         let result = text;
-        // Sort by length to remove longest particles first
         const sorted = [...this.particles].sort((a, b) => b.length - a.length);
-        
         for (const particle of sorted) {
-          // Remove from end of entire sentence
-          if (result.endsWith(particle)) {
-            result = result.slice(0, -particle.length);
-          }
-          // Remove from end of individual words
+          if (result.endsWith(particle)) result = result.slice(0, -particle.length);
           const words = result.split(' ');
           result = words.map(word => {
-            if (word.endsWith(particle) && word.length > particle.length) {
-              return word.slice(0, -particle.length);
-            }
+            if (word.endsWith(particle) && word.length > particle.length) return word.slice(0, -particle.length);
             return word;
           }).join(' ');
         }
@@ -452,7 +432,6 @@
         const CHO = ['ㄱ','ㄲ','ㄴ','ㄷ','ㄸ','ㄹ','ㅁ','ㅂ','ㅃ','ㅇ','ㅈ','ㅉ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
         const JUNG = ['ㅏ','ㅐ','ㅑ','ㅒ','ㅓ','ㅔ','ㅕ','ㅖ','ㅗ','ㅘ','ㅙ','ㅚ','ㅛ','ㅜ','ㅝ','ㅞ','ㅟ','ㅠ','ㅡ','ㅢ','ㅣ'];
         const JONG = ['','ㄱ','ㄲ','ㄳ','ㄴ','ㄵ','ㄶ','ㄷ','ㄹ','ㄺ','ㄻ','ㄼ','ㄽ','ㄾ','ㄿ','ㅀ','ㅁ','ㅂ','ㅄ','ㅅ','ㅆ','ㅇ','ㅈ','ㅊ','ㅋ','ㅌ','ㅍ','ㅎ'];
-        
         let result = '';
         for (const char of text) {
           const code = char.charCodeAt(0);
@@ -476,39 +455,23 @@
         for (let j = 1; j <= str2.length; j++) {
           for (let i = 1; i <= str1.length; i++) {
             const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
-            matrix[j][i] = Math.min(
-              matrix[j][i - 1] + 1,
-              matrix[j - 1][i] + 1,
-              matrix[j - 1][i - 1] + indicator
-            );
+            matrix[j][i] = Math.min(matrix[j][i - 1] + 1, matrix[j - 1][i] + 1, matrix[j - 1][i - 1] + indicator);
           }
         }
         return matrix[str2.length][str1.length];
       }
 
       createResult(match, confidence, method = 'none', spokenVariant = null, correctVariant = null) {
-        return { 
-            match, 
-            confidence: Math.round(confidence * 100) / 100, 
-            method, 
-            debug: { spokenVariant, correctVariant } 
-        };
+        return { match, confidence: Math.round(confidence * 100) / 100, method, debug: { spokenVariant, correctVariant } };
       }
 
       matchWithAlternatives(alternatives, correct, options = {}) {
         let bestResult = this.createResult(false, 0);
         for (const alt of alternatives) {
           const result = this.match(alt.transcript, correct, options);
-          // Weigh the match confidence by the STT confidence
           const weightedConfidence = result.confidence * (alt.confidence || 1.0);
-          
           if (weightedConfidence > bestResult.confidence) {
-            bestResult = { 
-                ...result, 
-                confidence: weightedConfidence, 
-                originalTranscript: alt.transcript, 
-                sttConfidence: alt.confidence 
-            };
+            bestResult = { ...result, confidence: weightedConfidence, originalTranscript: alt.transcript, sttConfidence: alt.confidence };
           }
         }
         return bestResult;
@@ -549,7 +512,7 @@
         voiceCandidates: [] 
     };
 
-    // --- INVISIBLE TTS ---
+    // --- INVISIBLE TTS ENGINE (GOOGLE PRIORITY) ---
     let ttsState = { text: '', speed: 1.0 };
 
     function speak(text, lang) {
