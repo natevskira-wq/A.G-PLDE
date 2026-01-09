@@ -1095,9 +1095,33 @@
             </div>`;
             
         setTimeout(() => {
+            document.body.classList.remove('fail-flash');
             appState.cumulativeIndex = 0;
             appState.isShowingCorrectAnswer = false;
-            if(appState.inFinalBossMode) renderFinalBossStep(); else renderCumulativeStep();
+            
+            // 1. DETERMINE WHICH QUEUE TO SHUFFLE
+            let queueToShuffle = null;
+            if (appState.inFinalBossMode) {
+                queueToShuffle = appState.finalBossQueue;
+            } else if (appState.inCumulativeMode) {
+                queueToShuffle = appState.cumulativeQueue;
+            }
+
+            // 2. SHUFFLE IT (Fisher-Yates)
+            if (queueToShuffle && queueToShuffle.length > 1) {
+                for (let i = queueToShuffle.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [queueToShuffle[i], queueToShuffle[j]] = [queueToShuffle[j], queueToShuffle[i]];
+                }
+                console.log("Queue reshuffled on fail.");
+            }
+            
+            // 3. RENDER
+            if (appState.inFinalBossMode) {
+                renderFinalBossStep();
+            } else {
+                renderCumulativeStep();
+            }
         }, 2500);
     }
 
