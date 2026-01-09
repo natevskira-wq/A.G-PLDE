@@ -115,7 +115,6 @@
             font-size: 0.9rem; color: #666; font-style: italic; margin-top: 10px; font-weight: normal;
         }
         
-        /* NEW: Director Mode Styling */
         .phonetic-text {
             font-family: 'Courier New', monospace;
             color: #800080; /* Purple */
@@ -305,7 +304,7 @@
 </div>
 
 <script>
-    // --- UNIVERSAL KOREAN MATCHER (ADVANCED) ---
+    // --- UNIVERSAL KOREAN MATCHER ---
     class UniversalKoreanMatcher {
       constructor(options = {}) {
         this.threshold = options.threshold || 0.7;
@@ -316,11 +315,8 @@
           '입니다', '이야', '야', '이다', '라고', '고', '요', '습니다', '합니다'
         ];
         this.phoneticMap = {
-          'ㄲ': 'ㄱ', 'ㅋ': 'ㄱ',
-          'ㄸ': 'ㄷ', 'ㅌ': 'ㄷ',
-          'ㅃ': 'ㅂ', 'ㅍ': 'ㅂ',
-          'ㅆ': 'ㅅ',
-          'ㅉ': 'ㅈ', 'ㅊ': 'ㅈ'
+          'ㄲ': 'ㄱ', 'ㅋ': 'ㄱ', 'ㄸ': 'ㄷ', 'ㅌ': 'ㄷ', 'ㅃ': 'ㅂ', 'ㅍ': 'ㅂ',
+          'ㅆ': 'ㅅ', 'ㅉ': 'ㅈ', 'ㅊ': 'ㅈ'
         };
       }
 
@@ -484,7 +480,7 @@
         voiceCandidates: [] 
     };
 
-    // --- INVISIBLE TTS ENGINE (GOOGLE PRIORITY) ---
+    // --- INVISIBLE TTS ---
     let ttsState = { text: '', speed: 1.0 };
 
     function speak(text, lang) {
@@ -812,7 +808,7 @@
         
         const link = appState.currentLessonData.links[appState.currentLinkIndex];
         const step = link.steps[appState.currentStepKey];
-        const meta = appState.currentLessonData.meta;
+        const meta = appState.currentLessonData.meta || {}; // Fix: Default to empty object
         
         elements.stepInfo.innerText = `${appState.currentLinkIndex + 1}/${appState.currentLessonData.links.length}`;
         elements.stage.innerHTML = '';
@@ -850,12 +846,8 @@
     // --- RENDER HELPERS ---
     function renderImprint(link, step, meta) {
         let html = '';
-        const showText = meta.show_text !== false; // Default true
-        
-        // Trigger (Native) - usually text is always shown for native side in imprint unless specified
+        const showText = meta.show_text !== false; 
         html += renderMedia(link.trigger, 'TRIGGER', meta.native_language, link.trigger.translation, null, true); 
-        
-        // Response (Target) - respect show_text
         html += renderMedia(link.response, 'RESPONSE', meta.target_language, link.response.translation, link.response.phonetic, showText);
         
         elements.stage.innerHTML = html;
@@ -866,29 +858,10 @@
     }
 
     function renderInputStrict(link, step, meta) {
-        // Strict Input shows Trigger (Native) -> User types Target
-        // Trigger is usually visible
-        const showText = meta.show_text !== false; 
-        const showTrans = meta.show_translation === true;
-        const showPhone = meta.show_phonetic === true;
-
         let html = `<div style="font-size:32px; font-weight:bold; margin-bottom:20px;">`;
-        
-        // Trigger
-        if (showText) {
-             html += `<span class="speakable" onclick="speak('${link.trigger.text.replace(/'/g, "\\'")}', '${meta.native_language}')">${link.trigger.text}</span>`;
-        }
-        
-        // Translation of Trigger (Rare but possible)
-        if (link.trigger.translation && showTrans) {
-            html += `<div class="translation-text">${link.trigger.translation}</div>`;
-        }
-        
-        // Phonetic of Trigger
-        if (link.trigger.phonetic && showPhone) {
-             html += `<div class="phonetic-text">${link.trigger.phonetic}</div>`;
-        }
-
+        html += `<span class="speakable" onclick="speak('${link.trigger.text.replace(/'/g, "\\'")}', '${meta.native_language}')">${link.trigger.text}</span>`;
+        if (link.trigger.translation) html += `<div class="translation-text">${link.trigger.translation}</div>`;
+        if (link.trigger.phonetic) html += `<div class="phonetic-text">${link.trigger.phonetic}</div>`;
         html += `</div>`;
         
         elements.stage.innerHTML = html;
@@ -901,25 +874,22 @@
 
     function renderMedia(obj, label, lang, translation, phonetic, showText = true) {
         if (!obj) return '';
-        const meta = appState.currentLessonData.meta;
+        const meta = appState.currentLessonData.meta || {};
         const showTrans = meta.show_translation === true;
         const showPhone = meta.show_phonetic === true;
 
         let out = '<div style="margin: 15px 0;">';
         if (label) out += `<div style="font-size:12px; letter-spacing:2px; margin-bottom:5px;">${label}</div>`;
         
-        // Text Visibility
         if (obj.text && showText) {
             const safeText = obj.text.replace(/'/g, "\\'");
             out += `<div class="speakable" style="font-size:28px; font-weight:bold;" onclick="speak('${safeText}', '${lang}')">${obj.text}</div>`;
         }
         
-        // Translation
         if (translation && showTrans) {
             out += `<div class="translation-text">${translation}</div>`;
         }
 
-        // Phonetic
         if (phonetic && showPhone) {
             out += `<div class="phonetic-text">${phonetic}</div>`;
         }
@@ -1041,24 +1011,19 @@
         
         const target = targetLink.response.text;
         appState.userInput = val;
-        const meta = appState.currentLessonData.meta;
+        const meta = appState.currentLessonData.meta || {};
         
         let passed = false;
         if(source === 'voice') {
             if(meta && (meta.target_language.startsWith('ko'))) {
-                // Use Advanced Korean Matcher
                 const result = koreanMatcher.matchWithAlternatives(appState.voiceCandidates, target, {
                     threshold: meta.voice_threshold || 0.7 
                 });
                 passed = result.match;
             } else {
-                // Use Generic Similarity from KoreanMatcher class (it handles simple strings too)
-                // Normalize first
                 const cleanUser = val.trim().toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
                 const cleanTarget = target.trim().toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
-                
                 const similarity = koreanMatcher.calculateSimilarity(cleanUser, cleanTarget);
-                // Use threshold from meta, or default to 0.8
                 passed = similarity >= (meta.voice_threshold || 0.8);
             }
         } else {
@@ -1075,6 +1040,7 @@
     }
 
     function pass() {
+        if (appState.isAnswered) return;
         appState.isAnswered = true;
         elements.feedback.style.color = 'green';
         elements.feedback.innerText = "CORRECT";
@@ -1087,7 +1053,7 @@
         setTimeout(() => {
             if(appState.inCumulativeMode) { appState.isAnswered=false; elements.feedback.innerText=""; nextCumulativeStep(); }
             else if(appState.inFinalBossMode) { appState.isAnswered=false; elements.feedback.innerText=""; nextFinalBossStep(); }
-            else nextStep();
+            else { appState.isAnswered=false; nextStep(); }
         }, 600);
     }
 
@@ -1099,7 +1065,6 @@
         elements.feedback.style.color='red';
         elements.feedback.innerText="FAIL";
         
-        // REFINED FAIL LOGIC: No auto-play on normal drill failure
         setTimeout(()=>{ appState.currentStepKey='1_model'; renderStep(); }, 1000);
     }
 
@@ -1109,7 +1074,7 @@
         appState.isShowingCorrectAnswer = true;
         
         const link = appState.inCumulativeMode ? appState.cumulativeQueue[appState.cumulativeIndex] : appState.finalBossQueue[appState.cumulativeIndex];
-        const meta = appState.currentLessonData.meta;
+        const meta = appState.currentLessonData.meta || {};
 
         elements.input.readOnly = true;
         elements.submitBtn.disabled = true;
@@ -1117,7 +1082,6 @@
         elements.feedback.style.color = 'red';
         elements.feedback.innerText = "WRONG";
         
-        // AUTO-PLAY TTS FOR CUMULATIVE
         speak(link.response.text, meta.target_language);
         
         document.body.classList.add('fail-flash');
@@ -1147,39 +1111,57 @@
         } else {
             appState.linksPassed++;
             const interval = appState.currentLessonData.meta.cumulative_interval || 3;
+            
+            // Check for Cumulative Trigger
             if(appState.linksPassed > 0 && appState.linksPassed % interval === 0 && appState.currentLinkIndex < appState.currentLessonData.links.length - 1) {
-                appState.currentLinkIndex++;
-                startCumulativeDrill();
-            } else if(appState.currentLinkIndex < appState.currentLessonData.links.length - 1) {
+                // Ensure we have passed links to review, otherwise just proceed
+                if (appState.passedLinks.length > 0) {
+                    appState.currentLinkIndex++;
+                    startCumulativeDrill();
+                    return;
+                }
+            }
+            
+            // Standard Progression
+            if(appState.currentLinkIndex < appState.currentLessonData.links.length - 1) {
                 appState.currentLinkIndex++;
                 appState.currentStepKey = Object.keys(appState.currentLessonData.links[appState.currentLinkIndex].steps).sort()[0];
                 renderStep();
             } else {
-                if(!appState.inFinalBossMode && !appState.inCumulativeMode) startFinalBoss();
-                else showReportCard();
+                // End of Lesson
+                if(!appState.inFinalBossMode && !appState.inCumulativeMode) {
+                    startFinalBoss();
+                } else {
+                    showReportCard();
+                }
             }
         }
     }
 
     // --- SUB-ROUTINES (CUMULATIVE & FINAL BOSS) ---
     function startCumulativeDrill() {
+        if (!appState.passedLinks || appState.passedLinks.length === 0) { nextStep(); return; }
         appState.inCumulativeMode = true; appState.cumulativeIndex = 0;
         appState.cumulativeQueue = [...appState.passedLinks];
         renderCumulativeStep();
     }
+    
     function renderCumulativeStep() {
         stopTimer(); resetInput(); appState.isShowingCorrectAnswer = false;
         const link = appState.cumulativeQueue[appState.cumulativeIndex];
+        const meta = appState.currentLessonData.meta || {};
         elements.phaseLabel.innerText = "CUMULATIVE REVIEW";
         elements.phaseLabel.classList.add('cumulative-warning');
-        elements.stage.innerHTML = `<div style="font-size:32px; font-weight:bold; margin-bottom:20px;">${link.trigger.text}</div>`;
-        elements.input.placeholder = "Prove you remember...";
+        
+        renderInputStrict(link, null, meta);
         startTimer(7);
     }
+    
     function nextCumulativeStep() {
         appState.cumulativeIndex++;
         if(appState.cumulativeIndex >= appState.cumulativeQueue.length) {
             appState.inCumulativeMode = false;
+            // Return to normal flow logic (safety check)
             if(appState.currentLinkIndex < appState.currentLessonData.links.length) {
                 const steps = Object.keys(appState.currentLessonData.links[appState.currentLinkIndex].steps).sort();
                 appState.currentStepKey = steps[0];
@@ -1189,18 +1171,28 @@
     }
 
     function startFinalBoss() {
-        appState.inFinalBossMode = true; appState.finalBossQueue = [...appState.currentLessonData.links];
+        // Fix: Safety Check for empty links
+        if (!appState.currentLessonData.links || appState.currentLessonData.links.length === 0) {
+            showReportCard();
+            return;
+        }
+        appState.inFinalBossMode = true;
+        appState.finalBossQueue = [...appState.currentLessonData.links];
         appState.cumulativeIndex = 0;
         renderFinalBossStep();
     }
+    
     function renderFinalBossStep() {
         stopTimer(); resetInput(); appState.isShowingCorrectAnswer = false;
         const link = appState.finalBossQueue[appState.cumulativeIndex];
+        const meta = appState.currentLessonData.meta || {};
         elements.phaseLabel.innerText = "FINAL BOSS";
-        elements.stage.innerHTML = `<div style="font-size:32px; font-weight:bold; margin-bottom:20px;">${link.trigger.text}</div>`;
+        
+        renderInputStrict(link, null, meta);
         elements.input.placeholder = "One last time...";
         startTimer(7);
     }
+    
     function nextFinalBossStep() {
         appState.cumulativeIndex++;
         if(appState.cumulativeIndex >= appState.finalBossQueue.length) {
@@ -1209,6 +1201,38 @@
         } else renderFinalBossStep();
     }
 
+    function showReportCard() {
+        const totalSteps = appState.currentLessonData.links.length * 5; 
+        const totalAttempts = totalSteps + appState.mistakeCount;
+        const accuracy = Math.round((totalSteps / totalAttempts) * 100);
+        
+        let grade = 'F', color = 'red';
+        if (accuracy >= 95) { grade = 'S'; color = 'green'; }
+        else if (accuracy >= 90) { grade = 'A'; color = 'green'; }
+        else if (accuracy >= 80) grade = 'B'; 
+        else if (accuracy >= 70) grade = 'C';
+        
+        if (color === 'green') saveProgress(appState.currentLesson.id, accuracy);
+
+        elements.stage.innerHTML = `
+            <div class="report-card">
+                <h1>COMPLETE</h1>
+                <div class="report-grade" style="color: ${color}">${grade}</div>
+                <div class="report-stat">ACCURACY: ${accuracy}%</div>
+                <button onclick="exitDrill()" style="margin-top: 20px; width: 100%;">BACK TO DASHBOARD</button>
+            </div>`;
+            
+        elements.phaseLabel.innerText = "REPORT CARD";
+        
+        // Fix: Hiding sticky footer entirely to avoid overlap
+        elements.inputArea.style.display = 'none';
+        
+        elements.input.style.display = 'none';
+        elements.voiceBtn.style.display = 'none';
+        elements.submitBtn.style.display = 'none';
+        elements.timerBar.style.width = '0%';
+    }
+    
     window.exitDrill = () => {
         fetchFilteredLessons(); 
         history.back(); 
@@ -1234,7 +1258,7 @@
         elements.input.onkeydown = (e) => { 
             if(e.key === 'Enter') {
                 const step = appState.currentLessonData?.links[appState.currentLinkIndex].steps[appState.currentStepKey];
-                if(step.type === 'imprint') validate('', 'keyboard');
+                if(step && step.type === 'imprint') validate('', 'keyboard');
                 else if(!elements.submitBtn.disabled) validate(appState.userInput, 'keyboard');
             }
         };
@@ -1248,12 +1272,11 @@
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         const sr = new SR();
         sr.continuous = false; sr.interimResults = true;
-        sr.maxAlternatives = 5; // UPGRADE: Capture multiple attempts
+        sr.maxAlternatives = 5; 
         
         sr.onresult = (e) => {
             const results = e.results[e.results.length-1];
             if(results.isFinal) {
-                // UPGRADE: Store all alternatives
                 appState.voiceCandidates = Array.from(results).map(r => ({
                     transcript: r.transcript,
                     confidence: r.confidence
@@ -1296,6 +1319,9 @@
         elements.input.value = ''; elements.input.readOnly = false;
         elements.voiceBtn.disabled = false; elements.submitBtn.disabled = true;
         elements.feedback.innerText = '';
+        
+        // Reset Footer Display
+        elements.inputArea.style.display = 'block'; // Ensure container is visible
         elements.submitBtn.style.display = 'inline-block';
         elements.voiceBtn.style.display = 'inline-block';
         elements.input.style.display = 'block';
