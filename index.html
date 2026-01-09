@@ -329,14 +329,9 @@
         let bestMatch = { similarity: 0, method: 'none', variant: null };
 
         // 0. SINGLE SYLLABLE MERCY (New Patch)
-        // If target is 1 char, check if spoken text *contains* the vowel sound of that char.
-        // Or if the first char of spoken matches the vowel of target.
         if (correct.length === 1 && spoken.length > 0) {
             const targetJamo = this.decomposeToJamo(correct);
-            const spokenJamo = this.decomposeToJamo(spoken.charAt(0)); // Check first char of input
-            
-            // Extract Middle Jamo (Vowel) - it's the 2nd char in the decomposed string
-            // Structure: Cho + Jung + Jong. We want Jung.
+            const spokenJamo = this.decomposeToJamo(spoken.charAt(0)); 
             if (targetJamo.length >= 2 && spokenJamo.length >= 2) {
                 if (targetJamo[1] === spokenJamo[1]) {
                     return this.createResult(true, 1.0, 'single-syllable-vowel-match');
@@ -446,6 +441,14 @@
           }
         }
         return result;
+      }
+
+      calculateSimilarity(str1, str2) {
+        if (str1 === str2) return 1.0;
+        const longer = str1.length > str2.length ? str1 : str2;
+        if (longer.length === 0) return 1.0;
+        const distance = this.levenshteinDistance(str1, str2);
+        return (longer.length - distance) / longer.length;
       }
 
       levenshteinDistance(str1, str2) {
@@ -896,6 +899,11 @@
         if (link.trigger.phonetic) html += `<div class="phonetic-text">${link.trigger.phonetic}</div>`;
         html += `</div>`;
         
+        // HINT FOR KOREAN SHORT WORDS
+        if (meta.target_language.startsWith('ko') && link.response.text.length === 1) {
+            html += `<div style="color: #2b1cff; font-size: 12px; margin-top: 5px; font-weight: bold;">💡 Tip: Say it loud, or say it twice.</div>`;
+        }
+
         elements.stage.innerHTML = html;
         elements.input.style.display = 'block';
         elements.submitBtn.style.display = 'inline-block';
@@ -1034,7 +1042,7 @@
 
         if(!appState.inCumulativeMode && !appState.inFinalBossMode) {
              const step = appState.currentLessonData.links[appState.currentLinkIndex].steps[appState.currentStepKey];
-             if(step.type === 'imprint') { nextStep(); return; }
+             if(step && step.type === 'imprint') { nextStep(); return; }
         }
 
         const targetLink = appState.inCumulativeMode ? appState.cumulativeQueue[appState.cumulativeIndex] : 
@@ -1048,8 +1056,16 @@
         let passed = false;
         if(source === 'voice') {
             if(meta && (meta.target_language.startsWith('ko'))) {
+                // Determine Threshold based on length
+                let threshold = meta.voice_threshold || 0.7;
+                
+                // FORCE OVERRIDE for Single Syllable to allow low-confidence matches
+                if (target.length === 1) {
+                    threshold = 0.35; // Very forgiving for short words
+                }
+
                 const result = koreanMatcher.matchWithAlternatives(appState.voiceCandidates, target, {
-                    threshold: meta.voice_threshold || 0.7 
+                    threshold: threshold
                 });
                 passed = result.match;
             } else {
@@ -1314,6 +1330,7 @@
         elements.input.onkeydown = (e) => { 
             if(e.key === 'Enter') {
                 const step = appState.currentLessonData?.links[appState.currentLinkIndex].steps[appState.currentStepKey];
+                // Imprint step?
                 if(step && step.type === 'imprint') validate('', 'keyboard');
                 else if(!elements.submitBtn.disabled) validate(appState.userInput, 'keyboard');
             }
