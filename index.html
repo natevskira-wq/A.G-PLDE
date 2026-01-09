@@ -156,6 +156,33 @@
         .option-btn { display: block; width: 100%; margin: 15px 0; text-align: left; }
         .action-bar { display: flex; flex-direction: row; gap: 10px; justify-content: space-between; }
         .action-bar button { flex: 1; }
+        
+        /* NEW: Audio Option Buttons */
+        .audio-options-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        .audio-option-btn {
+            padding: 20px;
+            text-align: left;
+            font-size: 18px;
+            background: #fff;
+            color: #000;
+            border: var(--border);
+            width: 100%;
+            transition: all 0.2s;
+        }
+        .audio-option-btn:hover {
+            background: #f0f0f0;
+        }
+        .audio-option-btn.selected {
+            background: #000;
+            color: #fff;
+            border-color: #000;
+        }
 
         .word-bank, .letter-bank { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 20px 0; }
         .word-btn, .letter-btn { 
@@ -304,7 +331,7 @@
 </div>
 
 <script>
-    // --- UNIVERSAL KOREAN MATCHER (V3 - ULTRA FORGIVING WITH SINGLE-SYLLABLE PATCH) ---
+    // --- UNIVERSAL KOREAN MATCHER ---
     class UniversalKoreanMatcher {
       constructor(options = {}) {
         this.threshold = options.threshold || 0.7;
@@ -512,10 +539,11 @@
         passedLinks: [], mistakeCount: 0, linksPassed: 0,
         inCumulativeMode: false, inFinalBossMode: false,
         cumulativeQueue: [], finalBossQueue: [], cumulativeIndex: 0,
-        voiceCandidates: [] 
+        voiceCandidates: [],
+        selectedAudioOption: null // NEW: For Audio Matcher
     };
 
-    // --- INVISIBLE TTS ENGINE (GOOGLE PRIORITY) ---
+    // --- INVISIBLE TTS ---
     let ttsState = { text: '', speed: 1.0 };
 
     function speak(text, lang) {
@@ -849,6 +877,7 @@
         elements.stage.innerHTML = '';
         updatePhaseLabel(step);
         
+        // Default Input state
         const isInputStep = ['fill_gap','input_strict'].includes(step.type);
         if(!isInputStep) elements.input.style.display = 'none';
         else elements.input.style.display = 'block';
@@ -899,18 +928,93 @@
         if (link.trigger.phonetic) html += `<div class="phonetic-text">${link.trigger.phonetic}</div>`;
         html += `</div>`;
         
-        // HINT FOR KOREAN SHORT WORDS
-        if (meta.target_language.startsWith('ko') && link.response.text.length === 1) {
-            html += `<div style="color: #2b1cff; font-size: 12px; margin-top: 5px; font-weight: bold;">💡 Tip: Say it loud, or say it twice.</div>`;
-        }
+        // AUDIO MATCHER SAFETY MODE
+        const isKorean = meta.target_language.startsWith('ko');
+        const targetText = link.response.text;
+        const isShort = (isKorean && targetText.length <= 2) || (!isKorean && targetText.length <= 3);
 
-        elements.stage.innerHTML = html;
-        elements.input.style.display = 'block';
-        elements.submitBtn.style.display = 'inline-block';
-        elements.submitBtn.disabled = true;
-        elements.voiceBtn.style.display = 'inline-block';
-        elements.submitBtn.innerText = "SUBMIT";
+        if (isShort) {
+            // HIDE INPUT & MIC
+            elements.input.style.display = 'none';
+            elements.voiceBtn.style.display = 'none';
+            
+            // GENERATE AUDIO OPTIONS
+            renderAudioSelection(targetText, meta.target_language);
+            
+            // RENDER HEADER
+            elements.stage.innerHTML = html + `<div id="audio-options-wrapper"></div>`;
+            
+            // Re-render buttons into wrapper
+            setTimeout(() => {
+                const wrapper = document.getElementById('audio-options-wrapper');
+                if (wrapper && appState.audioOptionsHtml) {
+                    wrapper.innerHTML = appState.audioOptionsHtml;
+                }
+            }, 0);
+            
+            // SETUP SUBMIT
+            elements.submitBtn.innerText = "CONFIRM";
+            elements.submitBtn.disabled = true; // Wait for selection
+            elements.submitBtn.style.display = 'inline-block';
+            
+        } else {
+            // STANDARD MODE
+            elements.stage.innerHTML = html;
+            elements.input.style.display = 'block';
+            elements.submitBtn.style.display = 'inline-block';
+            elements.submitBtn.disabled = true;
+            elements.voiceBtn.style.display = 'inline-block';
+            elements.submitBtn.innerText = "SUBMIT";
+        }
     }
+    
+    // HELPERS FOR AUDIO MATCHER
+    function getDistractors(correctText) {
+        const links = appState.currentLessonData.links;
+        const others = links.filter(l => l.response.text !== correctText);
+        // Shuffle others
+        for (let i = others.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [others[i], others[j]] = [others[j], others[i]];
+        }
+        // Return 2 text values
+        return others.slice(0, 2).map(l => l.response.text);
+    }
+
+    function renderAudioSelection(correctText, lang) {
+        appState.selectedAudioOption = null; // Reset
+        
+        const distractors = getDistractors(correctText);
+        const options = [correctText, ...distractors];
+        
+        // Shuffle options
+        for (let i = options.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [options[i], options[j]] = [options[j], options[i]];
+        }
+        
+        let html = `<div class="audio-options-container">`;
+        options.forEach((opt, idx) => {
+             const safeOpt = opt.replace(/'/g, "\\'");
+             html += `<button id="audio-btn-${idx}" class="audio-option-btn" onclick="handleAudioSelect('${safeOpt}', 'audio-btn-${idx}', '${lang}')">🔊 LISTEN</button>`;
+        });
+        html += `</div>`;
+        
+        appState.audioOptionsHtml = html; // Store for injection
+    }
+    
+    window.handleAudioSelect = (text, btnId, lang) => {
+        // Play Audio
+        speak(text, lang);
+        
+        // UI Update
+        document.querySelectorAll('.audio-option-btn').forEach(b => b.classList.remove('selected'));
+        document.getElementById(btnId).classList.add('selected');
+        
+        // Logic Update
+        appState.selectedAudioOption = text;
+        elements.submitBtn.disabled = false;
+    };
 
     function renderMedia(obj, label, lang, translation, phonetic, showText = true) {
         if (!obj) return '';
@@ -1037,6 +1141,12 @@
     // --- VALIDATION ---
     function validate(val, source='keyboard') {
         if(appState.isShowingCorrectAnswer) return;
+        
+        // Handle "Audio Option" special case
+        if (elements.submitBtn.innerText === "CONFIRM" && appState.selectedAudioOption) {
+            val = appState.selectedAudioOption; // Use selected text instead of input
+        }
+
         stopTimer();
         appState.currentInputSource = source;
 
@@ -1054,18 +1164,15 @@
         const meta = appState.currentLessonData.meta || {};
         
         let passed = false;
-        if(source === 'voice') {
+        
+        // Strict match for Audio Buttons (Exact text)
+        if (elements.submitBtn.innerText === "CONFIRM") {
+            passed = (val === target);
+        }
+        else if(source === 'voice') {
             if(meta && (meta.target_language.startsWith('ko'))) {
-                // Determine Threshold based on length
-                let threshold = meta.voice_threshold || 0.7;
-                
-                // FORCE OVERRIDE for Single Syllable to allow low-confidence matches
-                if (target.length === 1) {
-                    threshold = 0.35; // Very forgiving for short words
-                }
-
                 const result = koreanMatcher.matchWithAlternatives(appState.voiceCandidates, target, {
-                    threshold: threshold
+                    threshold: meta.voice_threshold || 0.7 
                 });
                 passed = result.match;
             } else {
