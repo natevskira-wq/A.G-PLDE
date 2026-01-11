@@ -233,6 +233,15 @@
         .voice-feedback { font-size: 12px; color: #666; margin-top: 5px; text-transform: none; letter-spacing: 0; }
         .single-word-display { font-size: 32px; font-weight: bold; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; }
         .voice-listening { background: red !important; color: white !important; }
+        
+        /* AUDIO PLAYING INDICATOR */
+        .audio-playing-indicator {
+            color: #0000FF;
+            font-weight: bold;
+            font-size: 14px;
+            animation: pulse 1.5s infinite;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
@@ -272,12 +281,21 @@
             </div>
             <div class="language-pair">
                 <label class="language-label">DIFFICULTY</label>
+                <!-- MICRO-LEVEL UPDATE -->
                 <select id="level-select">
-                    <option value="ALL">ALL LEVELS (MIXED)</option>
+                    <option value="ALL">ALL LEVELS</option>
                     <option value="A1">A1 (BEGINNER)</option>
+                    <option value="A1.1">A1.1</option>
+                    <option value="A1.2">A1.2</option>
                     <option value="A2">A2 (ELEMENTARY)</option>
+                    <option value="A2.1">A2.1</option>
+                    <option value="A2.2">A2.2</option>
                     <option value="B1">B1 (INTERMEDIATE)</option>
-                    <option value="B2">B2 (UPPER INTERMEDIATE)</option>
+                    <option value="B1.1">B1.1</option>
+                    <option value="B1.2">B1.2</option>
+                    <option value="B2">B2 (UPPER INT)</option>
+                    <option value="B2.1">B2.1</option>
+                    <option value="B2.2">B2.2</option>
                     <option value="C1">C1 (ADVANCED)</option>
                     <option value="C2">C2 (PROFICIENCY)</option>
                 </select>
@@ -318,6 +336,10 @@
         <div id="timer-sticky-wrapper"><div id="timer-bar"></div></div>
         <div id="phase-label">PHASE: INITIALIZING</div>
         <div id="step-info" style="text-align: right; font-size: 12px; margin-bottom: 5px;"></div>
+        
+        <!-- AUTO-PLAY INDICATOR -->
+        <div id="autoplay-status" class="audio-playing-indicator" style="text-align: center; display: none;">🔊 PLAYING...</div>
+
         <div id="stage"></div>
         <div id="feedback"></div>
         <div id="input-area">
@@ -331,7 +353,7 @@
 </div>
 
 <script>
-    // --- UNIVERSAL KOREAN MATCHER ---
+    // --- UNIVERSAL KOREAN MATCHER (V3) ---
     class UniversalKoreanMatcher {
       constructor(options = {}) {
         this.threshold = options.threshold || 0.7;
@@ -355,7 +377,7 @@
         const correctVariants = this.generateVariants(correct);
         let bestMatch = { similarity: 0, method: 'none', variant: null };
 
-        // 0. SINGLE SYLLABLE MERCY (New Patch)
+        // 0. SINGLE SYLLABLE MERCY
         if (correct.length === 1 && spoken.length > 0) {
             const targetJamo = this.decomposeToJamo(correct);
             const spokenJamo = this.decomposeToJamo(spoken.charAt(0)); 
@@ -522,7 +544,6 @@
         { code: "ru", name: "Русский (Russian)" }
     ];
     
-    const FILLER_WORDS = ['the', 'a', 'an', 'and', 'or', 'to', 'is', 'are'];
     const LANGUAGE_STORAGE_KEY = 'PLDE_LANGUAGE_PAIR'; 
     const SUPABASE_URL = 'https://syrhuxxryctrzjdzexnx.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5cmh1eHhyeWN0cnpqZHpleG54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMjYzMjUsImV4cCI6MjA4MDcwMjMyNX0.DP4O-USLYPbjGoTwM2fSc8juzLsABrDbGpQ-7CxSAXQ';
@@ -540,14 +561,17 @@
         inCumulativeMode: false, inFinalBossMode: false,
         cumulativeQueue: [], finalBossQueue: [], cumulativeIndex: 0,
         voiceCandidates: [],
-        selectedAudioOption: null // NEW: For Audio Matcher
+        selectedAudioOption: null 
     };
 
-    // --- INVISIBLE TTS ---
+    // --- INVISIBLE TTS & AUTO-PLAY ---
     let ttsState = { text: '', speed: 1.0 };
 
-    function speak(text, lang) {
-        if (!text || !window.speechSynthesis) return;
+    function speak(text, lang, onEndCallback) {
+        if (!text || !window.speechSynthesis) {
+            if(onEndCallback) onEndCallback();
+            return;
+        }
         window.speechSynthesis.cancel();
 
         if (ttsState.text === text) {
@@ -566,6 +590,11 @@
         
         if (voice) u.voice = voice;
         else u.lang = lang;
+
+        if (onEndCallback) {
+            u.onend = onEndCallback;
+            u.onerror = onEndCallback; // Safety fallback
+        }
 
         window.speechSynthesis.speak(u);
     }
@@ -621,6 +650,9 @@
         elements.inputArea = document.getElementById('input-area');
         elements.drillBreadcrumb = document.getElementById('drill-breadcrumb');
         elements.drillLevelInd = document.getElementById('drill-level-indicator');
+        
+        // Auto-play indicator
+        elements.autoPlayStatus = document.getElementById('autoplay-status');
     }
 
     // --- NAVIGATION ---
@@ -868,6 +900,7 @@
     function renderStep() {
         stopTimer(); resetInput(); appState.isShowingCorrectAnswer = false;
         elements.phaseLabel.classList.remove('cumulative-warning');
+        elements.autoPlayStatus.style.display = 'none'; // Hide indicator by default
         
         const link = appState.currentLessonData.links[appState.currentLinkIndex];
         const step = link.steps[appState.currentStepKey];
@@ -877,11 +910,13 @@
         elements.stage.innerHTML = '';
         updatePhaseLabel(step);
         
-        // Default Input state
         const isInputStep = ['fill_gap','input_strict'].includes(step.type);
         if(!isInputStep) elements.input.style.display = 'none';
         else elements.input.style.display = 'block';
-
+        
+        // AUTO-PLAY LOGIC
+        let shouldAutoPlay = (meta.audio_autoplay === true && step.type !== 'imprint');
+        
         switch (step.type) {
             case 'imprint': renderImprint(link, step, meta); break;
             case 'multiple_choice': renderMultipleChoice(link, step); break;
@@ -891,7 +926,23 @@
             default: elements.stage.innerHTML = `ERR: ${step.type}`;
         }
         
-        if (step.time_limit) startTimer(step.time_limit);
+        if (step.time_limit) {
+            if (shouldAutoPlay) {
+                // Pause timer, play audio, then start timer
+                elements.autoPlayStatus.style.display = 'block';
+                // Find what to play (Trigger usually)
+                const textToPlay = link.trigger.text;
+                const langToPlay = meta.native_language; // Usually trigger is native
+                
+                speak(textToPlay, langToPlay, () => {
+                    // On End
+                    elements.autoPlayStatus.style.display = 'none';
+                    startTimer(step.time_limit);
+                });
+            } else {
+                startTimer(step.time_limit);
+            }
+        }
         else elements.timerBar.style.width = '0%';
     }
 
@@ -1280,20 +1331,35 @@
         }, 2500);
     }
 
+    // --- MODULAR LOOP & PHASES ---
     function nextStep() {
         const steps = Object.keys(appState.currentLessonData.links[appState.currentLinkIndex].steps).sort();
         const currIdx = steps.indexOf(appState.currentStepKey);
         
-        if(currIdx < steps.length - 1) {
-            appState.currentStepKey = steps[currIdx+1];
+        // MODULAR PHASE LOGIC: Check meta.phases to see if we should skip
+        let nextIdx = currIdx + 1;
+        const phases = appState.currentLessonData.meta.phases || {};
+        
+        // Check if we can proceed to next steps
+        while(nextIdx < steps.length) {
+            const nextKey = steps[nextIdx];
+            // Check flags
+            if (nextKey === '2_recognition' && phases.recognition === false) { nextIdx++; continue; }
+            if (nextKey === '3_reorder' && phases.reorder === false) { nextIdx++; continue; }
+            if (nextKey === '4_production' && phases.production === false) { nextIdx++; continue; }
+            if (nextKey === '5_timed_recall' && phases.recall === false) { nextIdx++; continue; }
+            break; // Found a valid step
+        }
+        
+        if(nextIdx < steps.length) {
+            appState.currentStepKey = steps[nextIdx];
             renderStep();
         } else {
             appState.linksPassed++;
             const interval = appState.currentLessonData.meta.cumulative_interval || 3;
             
-            // Check for Cumulative Trigger
+            // Cumulative Logic
             if(appState.linksPassed > 0 && appState.linksPassed % interval === 0 && appState.currentLinkIndex < appState.currentLessonData.links.length - 1) {
-                // Ensure we have passed links to review, otherwise just proceed
                 if (appState.passedLinks.length > 0) {
                     appState.currentLinkIndex++;
                     startCumulativeDrill();
@@ -1301,18 +1367,27 @@
                 }
             }
             
-            // Standard Progression
+            // Move to next link
             if(appState.currentLinkIndex < appState.currentLessonData.links.length - 1) {
                 appState.currentLinkIndex++;
                 appState.currentStepKey = Object.keys(appState.currentLessonData.links[appState.currentLinkIndex].steps).sort()[0];
                 renderStep();
             } else {
                 // End of Lesson
-                if(!appState.inFinalBossMode && !appState.inCumulativeMode) {
-                    startFinalBoss();
-                } else {
-                    showReportCard();
-                }
+                checkForFinalBoss();
+            }
+        }
+    }
+    
+    function checkForFinalBoss() {
+        const phases = appState.currentLessonData.meta.phases || {};
+        if (phases.final_boss === false) {
+            showReportCard();
+        } else {
+            if(!appState.inFinalBossMode && !appState.inCumulativeMode) {
+                startFinalBoss();
+            } else {
+                showReportCard();
             }
         }
     }
@@ -1345,7 +1420,7 @@
                 const steps = Object.keys(appState.currentLessonData.links[appState.currentLinkIndex].steps).sort();
                 appState.currentStepKey = steps[0];
                 renderStep();
-            } else startFinalBoss();
+            } else checkForFinalBoss();
         } else renderCumulativeStep();
     }
 
