@@ -157,7 +157,7 @@
         .action-bar { display: flex; flex-direction: row; gap: 10px; justify-content: space-between; }
         .action-bar button { flex: 1; }
         
-        /* NEW: Audio Option Buttons */
+        /* AUDIO OPTION BUTTONS */
         .audio-options-container {
             display: flex;
             flex-direction: column;
@@ -281,7 +281,6 @@
             </div>
             <div class="language-pair">
                 <label class="language-label">DIFFICULTY</label>
-                <!-- MICRO-LEVEL UPDATE -->
                 <select id="level-select">
                     <option value="ALL">ALL LEVELS</option>
                     <option value="A1">A1 (BEGINNER)</option>
@@ -544,6 +543,7 @@
         { code: "ru", name: "Русский (Russian)" }
     ];
     
+    const FILLER_WORDS = ['the', 'a', 'an', 'and', 'or', 'to', 'is', 'are'];
     const LANGUAGE_STORAGE_KEY = 'PLDE_LANGUAGE_PAIR'; 
     const SUPABASE_URL = 'https://syrhuxxryctrzjdzexnx.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5cmh1eHhyeWN0cnpqZHpleG54Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjUxMjYzMjUsImV4cCI6MjA4MDcwMjMyNX0.DP4O-USLYPbjGoTwM2fSc8juzLsABrDbGpQ-7CxSAXQ';
@@ -564,7 +564,7 @@
         selectedAudioOption: null 
     };
 
-    // --- INVISIBLE TTS & AUTO-PLAY ---
+    // --- INVISIBLE TTS ---
     let ttsState = { text: '', speed: 1.0 };
 
     function speak(text, lang, onEndCallback) {
@@ -593,7 +593,7 @@
 
         if (onEndCallback) {
             u.onend = onEndCallback;
-            u.onerror = onEndCallback; // Safety fallback
+            u.onerror = onEndCallback; 
         }
 
         window.speechSynthesis.speak(u);
@@ -920,6 +920,7 @@
         switch (step.type) {
             case 'imprint': renderImprint(link, step, meta); break;
             case 'multiple_choice': renderMultipleChoice(link, step); break;
+            case 'audio_match': renderAudioMatch(link, step); break;
             case 'fill_gap': renderFillGap(link, step); break;
             case 'input_strict': renderInputStrict(link, step, meta); break;
             case 'sentence_reorder': renderSentenceReorder(link, step); break;
@@ -970,6 +971,41 @@
         elements.submitBtn.disabled = false;
         elements.input.style.display = 'none';
         elements.voiceBtn.style.display = 'none';
+    }
+
+    function renderAudioMatch(link, step) {
+        // Setup UI
+        elements.input.style.display = 'none';
+        elements.voiceBtn.style.display = 'none';
+        elements.submitBtn.style.display = 'inline-block';
+        elements.submitBtn.innerText = "CONFIRM";
+        elements.submitBtn.disabled = true;
+
+        appState.selectedAudioOption = null; // Reset selection
+
+        // Render Trigger
+        let html = `<div style="margin-bottom:30px; font-weight:bold; font-size:36px;">${link.trigger.text}</div>`;
+        
+        // Render Options Grid
+        html += `<div class="audio-options-container">`;
+        
+        const lang = appState.currentLessonData.meta.target_language;
+        const options = [...(step.options || [])];
+        
+        // Fisher-Yates shuffle
+        for (let i = options.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [options[i], options[j]] = [options[j], options[i]];
+        }
+
+        options.forEach((opt, idx) => {
+             const safeOpt = opt.replace(/'/g, "\\'");
+             // Reusing handleAudioSelect from the previous "Safety Mode" implementation
+             html += `<button id="am-btn-${idx}" class="audio-option-btn" onclick="handleAudioSelect('${safeOpt}', 'am-btn-${idx}', '${lang}')">🔊 LISTEN</button>`;
+        });
+        html += `</div>`;
+
+        elements.stage.innerHTML = html;
     }
 
     function renderInputStrict(link, step, meta) {
@@ -1420,17 +1456,17 @@
                 const steps = Object.keys(appState.currentLessonData.links[appState.currentLinkIndex].steps).sort();
                 appState.currentStepKey = steps[0];
                 renderStep();
-            } else checkForFinalBoss();
+            } else startFinalBoss();
         } else renderCumulativeStep();
     }
 
     function startFinalBoss() {
-        // Fix: Safety Check for empty links
+        // Safety check for empty queue
         if (!appState.currentLessonData.links || appState.currentLessonData.links.length === 0) {
             showReportCard();
             return;
         }
-        appState.inFinalBossMode = true;
+        appState.inFinalBossMode = true; 
         appState.finalBossQueue = [...appState.currentLessonData.links];
         appState.cumulativeIndex = 0;
         renderFinalBossStep();
@@ -1478,7 +1514,7 @@
             
         elements.phaseLabel.innerText = "REPORT CARD";
         
-        // Fix: Hiding sticky footer entirely to avoid overlap
+        // Hide sticky footer entirely to avoid overlap
         elements.inputArea.style.display = 'none';
         
         elements.input.style.display = 'none';
@@ -1512,8 +1548,7 @@
         elements.input.onkeydown = (e) => { 
             if(e.key === 'Enter') {
                 const step = appState.currentLessonData?.links[appState.currentLinkIndex].steps[appState.currentStepKey];
-                // Imprint step?
-                if(step && step.type === 'imprint') validate('', 'keyboard');
+                if(step.type === 'imprint') validate('', 'keyboard'); // Empty input okay for imprint
                 else if(!elements.submitBtn.disabled) validate(appState.userInput, 'keyboard');
             }
         };
@@ -1527,22 +1562,15 @@
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         const sr = new SR();
         sr.continuous = false; sr.interimResults = true;
-        sr.maxAlternatives = 5; 
         
         sr.onresult = (e) => {
-            const results = e.results[e.results.length-1];
-            if(results.isFinal) {
-                appState.voiceCandidates = Array.from(results).map(r => ({
-                    transcript: r.transcript,
-                    confidence: r.confidence
-                }));
-                
-                const t = results[0].transcript;
+            const t = e.results[e.results.length-1][0].transcript;
+            if(e.results[e.results.length-1].isFinal) {
                 elements.input.value = t; appState.userInput = t;
                 elements.submitBtn.disabled = false;
                 validate(t, 'voice');
             } else {
-                elements.input.value = results[0].transcript;
+                elements.input.value = t;
             }
         };
         sr.onend = () => { appState.isListening = false; elements.voiceBtn.classList.remove('voice-listening'); elements.voiceBtn.innerText="🎤 VOICE"; };
