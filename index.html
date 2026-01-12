@@ -1253,17 +1253,10 @@
     // --- VALIDATION ---
     function validate(val, source='keyboard') {
         if(appState.isShowingCorrectAnswer) return;
-        
-        // Handle "Audio Option" special case
-        if (elements.submitBtn.innerText === "CONFIRM" && appState.selectedAudioOption) {
-            val = appState.selectedAudioOption; // Use selected text instead of input
-        }
-
         stopTimer();
         appState.currentInputSource = source;
 
         // 3. Imprint Bypass (Safety Check)
-        // Ensure we are in a step that is explicitly 'imprint'
         if(!appState.inCumulativeMode && !appState.inFinalBossMode) {
              const step = appState.currentLessonData.links[appState.currentLinkIndex].steps[appState.currentStepKey];
              if(step && step.type === 'imprint') { nextStep(); return; }
@@ -1288,9 +1281,19 @@
 
         let passed = false;
         
-        // Strict match for Audio Buttons (Exact text)
+        // Strict match for Audio Buttons (Exact text) - Source: 'audio_match_confirm' (implicit via button text check or if source passed directly)
+        // Better: rely on the fact that Audio Match sets button text to "CONFIRM" AND source is a click on that button.
+        // Or if validation was called via button click (source='keyboard' default).
+        
+        // Special Handling for "CONFIRM" button click (Audio Match / Safety Mode)
         if (elements.submitBtn.innerText === "CONFIRM") {
-            passed = (val === target);
+            // In this mode, we use the selected audio option text
+            // Check if appState.selectedAudioOption exists
+             if (appState.selectedAudioOption) {
+                passed = (appState.selectedAudioOption === target);
+             } else {
+                passed = false; // No selection
+             }
         }
         else if(source === 'voice') {
             if(meta && (meta.target_language.startsWith('ko'))) {
@@ -1305,6 +1308,7 @@
                 passed = similarity >= (meta.voice_threshold || 0.8);
             }
         } else {
+            // Standard Keyboard / Multiple Choice
             const cleanUser = val.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
             const cleanTarget = target.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
             passed = (cleanUser === cleanTarget);
@@ -1446,11 +1450,7 @@
                 renderStep();
             } else {
                 // End of Lesson
-                if(!appState.inFinalBossMode && !appState.inCumulativeMode) {
-                    startFinalBoss();
-                } else {
-                    showReportCard();
-                }
+                checkForFinalBoss();
             }
         }
     }
@@ -1650,6 +1650,8 @@
         elements.input.value = ''; elements.input.readOnly = false;
         elements.voiceBtn.disabled = false; elements.submitBtn.disabled = true;
         elements.feedback.innerText = '';
+        appState.selectedAudioOption = null; // Fix: Reset selected option state
+        elements.submitBtn.innerText = 'SUBMIT'; // Fix: Reset button text
         
         // Reset Footer Display
         elements.inputArea.style.display = 'block'; // Ensure container is visible
