@@ -390,7 +390,10 @@
 
         for (const sv of spokenVariants) {
           for (const cv of correctVariants) {
+            // 1. EXACT MATCH
             if (sv === cv) return this.createResult(true, 1.0, 'exact', sv, cv);
+
+            // 2. REPETITION & CONTAINMENT
             if (sv.includes(cv) || cv.includes(sv)) {
                 const lenRatio = Math.min(sv.length, cv.length) / Math.max(sv.length, cv.length);
                 if (lenRatio > 0.4 || (cv.length <= 2 && sv.includes(cv))) {
@@ -400,6 +403,8 @@
                     }
                 }
             }
+
+            // 3. SHORT WORD TOLERANCE
             const dist = this.levenshteinDistance(sv, cv);
             if (cv.length <= 3 && dist <= 1) {
                  const score = 0.9;
@@ -407,8 +412,11 @@
                     bestMatch = { similarity: score, method: 'short-fuzzy', spokenVariant: sv, correctVariant: cv };
                  }
             }
+
+            // 4. STANDARD FUZZY MATH
             const maxLen = Math.max(sv.length, cv.length);
             const similarity = 1 - (dist / maxLen);
+            
             if (similarity > bestMatch.similarity) {
               bestMatch = { similarity, method: 'fuzzy', spokenVariant: sv, correctVariant: cv };
             }
@@ -1114,8 +1122,6 @@
     function renderMedia(obj, label, lang, translation, phonetic, showText = true) {
         if (!obj) return '';
         const meta = appState.currentLessonData.meta || {};
-        // Override showText based on meta if not explicitly forced to false by caller
-        const textVisible = showText && (meta.show_text !== false);
         const showTrans = meta.show_translation === true;
         const showPhone = meta.show_phonetic === true;
         const hasImage = obj.image_url && obj.image_url !== 'placeholder';
@@ -1124,12 +1130,12 @@
         if (label) out += `<div style="font-size:12px; letter-spacing:2px; margin-bottom:5px;">${label}</div>`;
 
         // VISUAL TRIGGER MODE (Image Only)
-        if (!textVisible && hasImage) {
+        if (!showText && hasImage) {
              out += `<img src="${obj.image_url}" style="max-width:100%; max-height:300px; border: 2px solid #000; margin-bottom:10px;">`;
         }
         // STANDARD MODE (Text + Optional Image)
         else {
-            if (textVisible && obj.text) {
+            if (showText && obj.text) {
                 const safeText = obj.text.replace(/'/g, "\\'");
                 out += `<div class="speakable" style="font-size:28px; font-weight:bold;" onclick="speak('${safeText}', '${lang}')">${obj.text}</div>`;
             }
@@ -1256,19 +1262,30 @@
         stopTimer();
         appState.currentInputSource = source;
 
+        // 3. Imprint Bypass (Safety Check)
+        // Ensure we are in a step that is explicitly 'imprint'
         if(!appState.inCumulativeMode && !appState.inFinalBossMode) {
              const step = appState.currentLessonData.links[appState.currentLinkIndex].steps[appState.currentStepKey];
              if(step && step.type === 'imprint') { nextStep(); return; }
         }
 
-        const targetLink = appState.inCumulativeMode ? appState.cumulativeQueue[appState.cumulativeIndex] : 
-                           appState.inFinalBossMode ? appState.finalBossQueue[appState.cumulativeIndex] :
-                           appState.currentLessonData.links[appState.currentLinkIndex];
+        // 2. Identify Context
+        let link = null;
+        if (appState.inFinalBossMode) {
+            link = appState.finalBossQueue[appState.cumulativeIndex];
+        } else if (appState.inCumulativeMode) {
+            link = appState.cumulativeQueue[appState.cumulativeIndex];
+        } else {
+            link = appState.currentLessonData.links[appState.currentLinkIndex];
+        }
         
-        const target = targetLink.response.text;
+        const target = link.response.text;
         appState.userInput = val;
         const meta = appState.currentLessonData.meta || {};
         
+        // 4. Logging (QA Requirement)
+        console.log(`QA LOG: Validating "${val}" vs Target "${target}" (Source: ${source})`);
+
         let passed = false;
         
         // Strict match for Audio Buttons (Exact text)
@@ -1429,7 +1446,11 @@
                 renderStep();
             } else {
                 // End of Lesson
-                checkForFinalBoss();
+                if(!appState.inFinalBossMode && !appState.inCumulativeMode) {
+                    startFinalBoss();
+                } else {
+                    showReportCard();
+                }
             }
         }
     }
