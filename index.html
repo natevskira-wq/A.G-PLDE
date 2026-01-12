@@ -174,6 +174,7 @@
             border: var(--border);
             width: 100%;
             transition: all 0.2s;
+            cursor: pointer;
         }
         .audio-option-btn:hover {
             background: #f0f0f0;
@@ -389,10 +390,7 @@
 
         for (const sv of spokenVariants) {
           for (const cv of correctVariants) {
-            // 1. EXACT MATCH
             if (sv === cv) return this.createResult(true, 1.0, 'exact', sv, cv);
-
-            // 2. REPETITION & CONTAINMENT
             if (sv.includes(cv) || cv.includes(sv)) {
                 const lenRatio = Math.min(sv.length, cv.length) / Math.max(sv.length, cv.length);
                 if (lenRatio > 0.4 || (cv.length <= 2 && sv.includes(cv))) {
@@ -402,8 +400,6 @@
                     }
                 }
             }
-
-            // 3. SHORT WORD TOLERANCE
             const dist = this.levenshteinDistance(sv, cv);
             if (cv.length <= 3 && dist <= 1) {
                  const score = 0.9;
@@ -411,11 +407,8 @@
                     bestMatch = { similarity: score, method: 'short-fuzzy', spokenVariant: sv, correctVariant: cv };
                  }
             }
-
-            // 4. STANDARD FUZZY MATH
             const maxLen = Math.max(sv.length, cv.length);
             const similarity = 1 - (dist / maxLen);
-            
             if (similarity > bestMatch.similarity) {
               bestMatch = { similarity, method: 'fuzzy', spokenVariant: sv, correctVariant: cv };
             }
@@ -797,6 +790,19 @@
                     return matchNative && matchTarget && matchLevel;
                 } catch { return false; }
             });
+            
+            // SORTING LOGIC
+            const levelWeight = { "A1": 1, "A2": 2, "B1": 3, "B2": 4, "C1": 5, "C2": 6 };
+            appState.lessons.sort((a, b) => {
+                let cA = (typeof a.content === 'string') ? JSON.parse(a.content) : a.content;
+                let cB = (typeof b.content === 'string') ? JSON.parse(b.content) : b.content;
+                let levelA = (cA.meta?.level || '').toUpperCase();
+                let levelB = (cB.meta?.level || '').toUpperCase();
+                let wA = levelWeight[levelA] || 99;
+                let wB = levelWeight[levelB] || 99;
+                return wA - wB;
+            });
+
             renderDashboard();
             if (appState.lessons.length === 0) elements.status.innerText = "";
             else elements.status.innerText = `FOUND ${appState.lessons.length} LESSONS`;
@@ -904,7 +910,7 @@
         
         const link = appState.currentLessonData.links[appState.currentLinkIndex];
         const step = link.steps[appState.currentStepKey];
-        const meta = appState.currentLessonData.meta || {}; // Fix: Default to empty object
+        const meta = appState.currentLessonData.meta || {}; 
         
         elements.stepInfo.innerText = `${appState.currentLinkIndex + 1}/${appState.currentLessonData.links.length}`;
         elements.stage.innerHTML = '';
@@ -953,6 +959,7 @@
         else if(appState.inCumulativeMode) { label = "CUMULATIVE REVIEW"; elements.phaseLabel.classList.add('cumulative-warning'); }
         else if(step.type === 'imprint') label = "PHASE 1: IMPRINT";
         else if(step.type === 'multiple_choice') label = "PHASE 2: RECOGNITION";
+        else if(step.type === 'audio_match') label = "PHASE 2: LISTENING";
         else if(step.type === 'fill_gap') label = "PHASE 3: COMPLETION";
         else if(step.type === 'sentence_reorder') label = "PHASE 3: CONSTRUCTION";
         else if(step.type === 'input_strict') label = "PHASE 4: PRODUCTION";
@@ -983,8 +990,9 @@
 
         appState.selectedAudioOption = null; // Reset selection
 
-        // Render Trigger
-        let html = `<div style="margin-bottom:30px; font-weight:bold; font-size:36px;">${link.trigger.text}</div>`;
+        // Render Trigger (Using renderMedia to respect image/text toggles)
+        const meta = appState.currentLessonData.meta || {};
+        let html = renderMedia(link.trigger, '', meta.native_language, null, null, true); 
         
         // Render Options Grid
         html += `<div class="audio-options-container">`;
@@ -1000,7 +1008,7 @@
 
         options.forEach((opt, idx) => {
              const safeOpt = opt.replace(/'/g, "\\'");
-             // Reusing handleAudioSelect from the previous "Safety Mode" implementation
+             // Reusing handleAudioSelect logic
              html += `<button id="am-btn-${idx}" class="audio-option-btn" onclick="handleAudioSelect('${safeOpt}', 'am-btn-${idx}', '${lang}')">🔊 LISTEN</button>`;
         });
         html += `</div>`;
@@ -1106,26 +1114,37 @@
     function renderMedia(obj, label, lang, translation, phonetic, showText = true) {
         if (!obj) return '';
         const meta = appState.currentLessonData.meta || {};
+        // Override showText based on meta if not explicitly forced to false by caller
+        const textVisible = showText && (meta.show_text !== false);
         const showTrans = meta.show_translation === true;
         const showPhone = meta.show_phonetic === true;
+        const hasImage = obj.image_url && obj.image_url !== 'placeholder';
 
         let out = '<div style="margin: 15px 0;">';
         if (label) out += `<div style="font-size:12px; letter-spacing:2px; margin-bottom:5px;">${label}</div>`;
-        
-        if (obj.text && showText) {
-            const safeText = obj.text.replace(/'/g, "\\'");
-            out += `<div class="speakable" style="font-size:28px; font-weight:bold;" onclick="speak('${safeText}', '${lang}')">${obj.text}</div>`;
+
+        // VISUAL TRIGGER MODE (Image Only)
+        if (!textVisible && hasImage) {
+             out += `<img src="${obj.image_url}" style="max-width:100%; max-height:300px; border: 2px solid #000; margin-bottom:10px;">`;
         }
-        
-        if (translation && showTrans) {
-            out += `<div class="translation-text">${translation}</div>`;
+        // STANDARD MODE (Text + Optional Image)
+        else {
+            if (textVisible && obj.text) {
+                const safeText = obj.text.replace(/'/g, "\\'");
+                out += `<div class="speakable" style="font-size:28px; font-weight:bold;" onclick="speak('${safeText}', '${lang}')">${obj.text}</div>`;
+            }
+
+            if (translation && showTrans) out += `<div class="translation-text">${translation}</div>`;
+            if (phonetic && showPhone) out += `<div class="phonetic-text">${phonetic}</div>`;
+
+            if (hasImage) {
+                out += `<img src="${obj.image_url}" style="max-width:100%; max-height:200px; margin-top:10px;">`;
+            }
         }
 
-        if (phonetic && showPhone) {
-            out += `<div class="phonetic-text">${phonetic}</div>`;
+        if (obj.audio_url && obj.audio_url !== 'placeholder') {
+            out += `<audio controls src="${obj.audio_url}" autoplay style="margin-top:10px; height:30px;"></audio>`;
         }
-        
-        if (obj.audio_url) out += `<audio controls src="${obj.audio_url}" autoplay style="margin-top:10px; height:30px;"></audio>`;
         out += '</div>';
         return out;
     }
@@ -1461,12 +1480,12 @@
     }
 
     function startFinalBoss() {
-        // Safety check for empty queue
+        // Fix: Safety Check for empty links
         if (!appState.currentLessonData.links || appState.currentLessonData.links.length === 0) {
             showReportCard();
             return;
         }
-        appState.inFinalBossMode = true; 
+        appState.inFinalBossMode = true;
         appState.finalBossQueue = [...appState.currentLessonData.links];
         appState.cumulativeIndex = 0;
         renderFinalBossStep();
@@ -1514,7 +1533,7 @@
             
         elements.phaseLabel.innerText = "REPORT CARD";
         
-        // Hide sticky footer entirely to avoid overlap
+        // Fix: Hiding sticky footer entirely to avoid overlap
         elements.inputArea.style.display = 'none';
         
         elements.input.style.display = 'none';
@@ -1548,7 +1567,8 @@
         elements.input.onkeydown = (e) => { 
             if(e.key === 'Enter') {
                 const step = appState.currentLessonData?.links[appState.currentLinkIndex].steps[appState.currentStepKey];
-                if(step.type === 'imprint') validate('', 'keyboard'); // Empty input okay for imprint
+                // Imprint step?
+                if(step && step.type === 'imprint') validate('', 'keyboard');
                 else if(!elements.submitBtn.disabled) validate(appState.userInput, 'keyboard');
             }
         };
@@ -1562,15 +1582,22 @@
         const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
         const sr = new SR();
         sr.continuous = false; sr.interimResults = true;
+        sr.maxAlternatives = 5; 
         
         sr.onresult = (e) => {
-            const t = e.results[e.results.length-1][0].transcript;
-            if(e.results[e.results.length-1].isFinal) {
+            const results = e.results[e.results.length-1];
+            if(results.isFinal) {
+                appState.voiceCandidates = Array.from(results).map(r => ({
+                    transcript: r.transcript,
+                    confidence: r.confidence
+                }));
+                
+                const t = results[0].transcript;
                 elements.input.value = t; appState.userInput = t;
                 elements.submitBtn.disabled = false;
                 validate(t, 'voice');
             } else {
-                elements.input.value = t;
+                elements.input.value = results[0].transcript;
             }
         };
         sr.onend = () => { appState.isListening = false; elements.voiceBtn.classList.remove('voice-listening'); elements.voiceBtn.innerText="🎤 VOICE"; };
