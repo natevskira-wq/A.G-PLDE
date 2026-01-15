@@ -1490,10 +1490,10 @@ let html = renderMedia(link.trigger, '', meta.native_language, null, null, showT
             
         setTimeout(() => {
             document.body.classList.remove('fail-flash');
-            appState.cumulativeIndex = 0;
+            appState.cumulativeIndex = 0; // Always restart from index 0
             appState.isShowingCorrectAnswer = false;
             
-            // 1. DETERMINE WHICH QUEUE TO SHUFFLE
+            // 1. DETERMINE WHICH QUEUE TO RESET
             let queueToShuffle = null;
             if (appState.inFinalBossMode) {
                 queueToShuffle = appState.finalBossQueue;
@@ -1501,13 +1501,15 @@ let html = renderMedia(link.trigger, '', meta.native_language, null, null, showT
                 queueToShuffle = appState.cumulativeQueue;
             }
 
-            // 2. SHUFFLE IT (Fisher-Yates)
-            if (queueToShuffle && queueToShuffle.length > 1) {
+            // 2. FIX: ONLY SHUFFLE IF RANDOMIZE IS ENABLED
+            if (meta.randomize && queueToShuffle && queueToShuffle.length > 1) {
                 for (let i = queueToShuffle.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [queueToShuffle[i], queueToShuffle[j]] = [queueToShuffle[j], queueToShuffle[i]];
                 }
-                console.log("Queue reshuffled on fail.");
+                console.log("Queue reshuffled on fail (Randomize: ON).");
+            } else {
+                console.log("Queue retained order on fail (Randomize: OFF).");
             }
             
             // 3. RENDER
@@ -1585,13 +1587,19 @@ let html = renderMedia(link.trigger, '', meta.native_language, null, null, showT
     // --- SUB-ROUTINES (CUMULATIVE & FINAL BOSS) ---
     function startCumulativeDrill() {
         if (!appState.passedLinks || appState.passedLinks.length === 0) { nextStep(); return; }
-        appState.inCumulativeMode = true; appState.cumulativeIndex = 0;
+        
+        appState.inCumulativeMode = true; 
+        appState.cumulativeIndex = 0;
+        
+        // Copy the passed links in their original order
         appState.cumulativeQueue = [...appState.passedLinks];
         
-        // 3. FRESH SHUFFLE EVERY TIME
-        for (let i = appState.cumulativeQueue.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [appState.cumulativeQueue[i], appState.cumulativeQueue[j]] = [appState.cumulativeQueue[j], appState.cumulativeQueue[i]];
+        // FIX: Only shuffle if randomization is enabled in metadata
+        if (appState.currentLessonData.meta && appState.currentLessonData.meta.randomize) {
+            for (let i = appState.cumulativeQueue.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [appState.cumulativeQueue[i], appState.cumulativeQueue[j]] = [appState.cumulativeQueue[j], appState.cumulativeQueue[i]];
+            }
         }
         
         renderCumulativeStep();
