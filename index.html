@@ -1606,15 +1606,41 @@ let html = renderMedia(link.trigger, '', meta.native_language, null, null, showT
     }
     
     function renderCumulativeStep() {
-        stopTimer(); resetInput(); appState.isShowingCorrectAnswer = false;
+        stopTimer(); 
+        resetInput(); 
+        appState.isShowingCorrectAnswer = false;
+        elements.phaseLabel.classList.remove('cumulative-warning');
+        elements.autoPlayStatus.style.display = 'none';
+
         const link = appState.cumulativeQueue[appState.cumulativeIndex];
         const meta = appState.currentLessonData.meta || {};
+        
         elements.phaseLabel.innerText = "CUMULATIVE REVIEW";
         elements.phaseLabel.classList.add('cumulative-warning');
         
+        // Render Visuals
         renderInputStrict(link, null, meta);
-        startTimer(7);
+        
+        // AUTO-PLAY TRIGGER LOGIC
+        if (meta.audio_autoplay) {
+            // Lock UI & Show Indicator
+            setInputState(false);
+            elements.autoPlayStatus.style.display = 'block';
+            elements.autoPlayStatus.innerText = '🎧 LISTENING...';
+
+            // Play Trigger (Question) Audio
+            speak(link.trigger.text, meta.native_language, () => {
+                // On Finish: Unlock & Start Timer
+                elements.autoPlayStatus.style.display = 'none';
+                setInputState(true);
+                startTimer(7);
+            }, true); // Force 1.0x speed
+        } else {
+            // Standard Visual-Only Start
+            startTimer(7);
+        }
     }
+
     
     function nextCumulativeStep() {
         appState.cumulativeIndex++;
@@ -1642,14 +1668,38 @@ let html = renderMedia(link.trigger, '', meta.native_language, null, null, showT
     }
     
     function renderFinalBossStep() {
-        stopTimer(); resetInput(); appState.isShowingCorrectAnswer = false;
+        stopTimer(); 
+        resetInput(); 
+        appState.isShowingCorrectAnswer = false;
+        elements.autoPlayStatus.style.display = 'none';
+
         const link = appState.finalBossQueue[appState.cumulativeIndex];
         const meta = appState.currentLessonData.meta || {};
+        
         elements.phaseLabel.innerText = "FINAL BOSS";
         
+        // Render Visuals
         renderInputStrict(link, null, meta);
         elements.input.placeholder = "One last time...";
-        startTimer(7);
+        
+        // AUTO-PLAY TRIGGER LOGIC
+        if (meta.audio_autoplay) {
+            // Lock UI & Show Indicator
+            setInputState(false);
+            elements.autoPlayStatus.style.display = 'block';
+            elements.autoPlayStatus.innerText = '🎧 LISTENING...';
+
+            // Play Trigger (Question) Audio
+            speak(link.trigger.text, meta.native_language, () => {
+                // On Finish: Unlock & Start Timer
+                elements.autoPlayStatus.style.display = 'none';
+                setInputState(true);
+                startTimer(7);
+            }, true); // Force 1.0x speed
+        } else {
+            // Standard Visual-Only Start
+            startTimer(7);
+        }
     }
     
     function nextFinalBossStep() {
