@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PLDE - Procedural Language Drill Engine</title>
+    <!-- FAVICON RESTORED -->
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>⚡</text></svg>">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
@@ -74,21 +75,33 @@
             text-align: center; margin: 20px 0; font-weight: bold; min-height: 24px; font-size: 14px;
         }
 
-        /* CREDITS FOOTER */
+        /* CREDITS FOOTER (UPDATED STYLE) */
         .credits-footer {
-            margin-top: 60px; text-align: center; border-top: 2px solid #000;
-            padding-top: 20px; color: #000;
+            margin-top: 60px;
+            text-align: center;
+            border-top: 2px solid #000; /* Thicker, solid black line */
+            padding-top: 20px;
+            color: #000; /* Solid Black */
         }
         .credits-name {
-            font-weight: 900; color: #000; font-size: 22px;
-            letter-spacing: 1px; margin-bottom: 8px;
+            font-weight: 900; /* Extra Bold */
+            color: #000;
+            font-size: 22px; /* Biggest */
+            letter-spacing: 1px;
+            margin-bottom: 8px;
         }
         .credits-phone {
-            font-weight: bold; font-size: 18px; color: #000;
-            margin-bottom: 8px; font-family: monospace;
+            font-weight: bold;
+            font-size: 18px; /* Medium */
+            color: #000;
+            margin-bottom: 8px;
+            font-family: monospace;
         }
         .credits-title {
-            font-size: 14px; font-weight: bold; letter-spacing: 2px; color: #000;
+            font-size: 14px; /* Smallest */
+            font-weight: bold;
+            letter-spacing: 2px;
+            color: #000;
         }
         
         /* STICKY TIMER */
@@ -264,6 +277,8 @@
             <button id="login-btn" style="width: 100%; font-size: 24px;">LOGIN</button>
             <div id="login-status" style="margin-top: 20px; color: red; font-weight: bold;"></div>
             <div style="display:none;">ACCESS LIMITED TO 2 DEVICES PER CODE</div>
+            
+            <!-- UPDATED CREDITS -->
             <div class="credits-footer">
                 <div class="credits-name">CONCEPT & CODE BY ABD-ALRAHMAN GAMAL</div>
                 <div class="credits-phone">01001395058</div>
@@ -298,7 +313,7 @@
                     <option value="B1">B1 (INTERMEDIATE)</option>
                     <option value="B1.1">B1.1</option>
                     <option value="B1.2">B1.2</option>
-                    <option value="B2">B2 (UPPER INT)</option>
+                    <option value="B2">B2 (UPPER INTERMEDIATE)</option>
                     <option value="B2.1">B2.1</option>
                     <option value="B2.2">B2.2</option>
                     <option value="C1">C1 (ADVANCED)</option>
@@ -395,10 +410,7 @@
 
         for (const sv of spokenVariants) {
           for (const cv of correctVariants) {
-            // 1. EXACT MATCH
             if (sv === cv) return this.createResult(true, 1.0, 'exact', sv, cv);
-
-            // 2. REPETITION & CONTAINMENT
             if (sv.includes(cv) || cv.includes(sv)) {
                 const lenRatio = Math.min(sv.length, cv.length) / Math.max(sv.length, cv.length);
                 if (lenRatio > 0.4 || (cv.length <= 2 && sv.includes(cv))) {
@@ -408,8 +420,6 @@
                     }
                 }
             }
-
-            // 3. SHORT WORD TOLERANCE
             const dist = this.levenshteinDistance(sv, cv);
             if (cv.length <= 3 && dist <= 1) {
                  const score = 0.9;
@@ -417,11 +427,8 @@
                     bestMatch = { similarity: score, method: 'short-fuzzy', spokenVariant: sv, correctVariant: cv };
                  }
             }
-
-            // 4. STANDARD FUZZY MATH
             const maxLen = Math.max(sv.length, cv.length);
             const similarity = 1 - (dist / maxLen);
-            
             if (similarity > bestMatch.similarity) {
               bestMatch = { similarity, method: 'fuzzy', spokenVariant: sv, correctVariant: cv };
             }
@@ -549,6 +556,14 @@
         { code: "ru", name: "Русский (Russian)" }
     ];
     
+    // NUMBER NORMALIZATION MAP
+    const DIGIT_MAP = {
+        'de': {'1':'eins','2':'zwei','3':'drei','4':'vier','5':'fünf','6':'sechs','7':'sieben','8':'acht','9':'neun','10':'zehn','11':'elf','12':'zwölf'},
+        'en': {'1':'one','2':'two','3':'three','4':'four','5':'five','6':'six','7':'seven','8':'eight','9':'nine','10':'ten'},
+        'fr': {'1':'un','2':'deux','3':'trois','4':'quatre','5':'cinq','6':'six','7':'sept','8':'huit','9':'neuf','10':'dix'},
+        'es': {'1':'uno','2':'dos','3':'tres','4':'cuatro','5':'cinco','6':'seis','7':'siete','8':'ocho','9':'nueve','10':'diez'}
+    };
+
     const FILLER_WORDS = ['the', 'a', 'an', 'and', 'or', 'to', 'is', 'are'];
     const LANGUAGE_STORAGE_KEY = 'PLDE_LANGUAGE_PAIR'; 
     const SUPABASE_URL = 'https://syrhuxxryctrzjdzexnx.supabase.co';
@@ -578,42 +593,28 @@
 
     // --- HELPER: INPUT STATE TOGGLE (AUTO-PLAY LOCK) ---
     function setInputState(enabled) {
-        // Form Elements
         const els = [elements.input, elements.voiceBtn, elements.submitBtn];
-        // Custom Buttons (Audio/Word/Letter/Option)
         const customBtns = document.querySelectorAll('.audio-option-btn, .word-btn, .letter-btn, .option-btn');
         
         if (!enabled) {
-            // Lock Everything
             els.forEach(e => e.disabled = true);
-            customBtns.forEach(b => { 
-                b.disabled = true; 
-                b.style.opacity = '0.5'; 
-            });
+            customBtns.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; });
             elements.inputArea.style.opacity = '0.5';
         } else {
-            // Unlock Inputs
             elements.input.disabled = false;
             elements.voiceBtn.disabled = false;
             
-            // Smart Unlock for Submit Button
             if (appState.userInput && appState.userInput.trim().length > 0) {
                  elements.submitBtn.disabled = false;
             } else if (elements.submitBtn.innerText === "CONFIRM" && appState.selectedAudioOption) {
                  elements.submitBtn.disabled = false;
             } else {
-                 // Keep submit disabled if no input (default state)
                  elements.submitBtn.disabled = true; 
             }
             
-            // Unlock Custom Buttons
-            customBtns.forEach(b => { 
-                b.disabled = false; 
-                b.style.opacity = '1'; 
-            });
+            customBtns.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
             elements.inputArea.style.opacity = '1';
             
-            // Refocus if text input is active
             if (elements.input.style.display !== 'none') elements.input.focus();
         }
     }
@@ -628,11 +629,9 @@
         }
         window.speechSynthesis.cancel();
 
-        // TTS Logic Fix: Force Normal Speed Override
         if (forceNormal) {
             ttsState.speed = 1.0;
         } else {
-            // Toggle Logic
             if (ttsState.text === text) {
                 ttsState.speed = (ttsState.speed === 1.0) ? 0.5 : 1.0;
             } else {
@@ -669,8 +668,6 @@
         setupEvents();
         generateFingerprint();
         populateLanguageSelectors();
-        
-        // Fetch All Meta for Status Line
         fetchAllLessonMeta();
         
         history.replaceState({ view: 'login-view' }, "", "#login");
@@ -714,7 +711,6 @@
         elements.drillBreadcrumb = document.getElementById('drill-breadcrumb');
         elements.drillLevelInd = document.getElementById('drill-level-indicator');
         
-        // Auto-play indicator
         elements.autoPlayStatus = document.getElementById('autoplay-status');
     }
 
@@ -814,7 +810,6 @@
             const o2 = document.createElement('option'); o2.value = lang.code; o2.textContent = lang.name;
             elements.targetSelect.appendChild(o2);
         });
-        
         const updater = () => {
             updateStatus();
             elements.startBtn.disabled = !(elements.nativeSelect.value && elements.targetSelect.value && elements.levelSelect.value);
@@ -838,7 +833,6 @@
 
     function initSupabase() { if (window.supabase) supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY); }
 
-    // UI CLEANUP: FETCH ALL META FOR STATUS
     async function fetchAllLessonMeta() {
         if (!supabaseClient) return;
         try {
@@ -1087,8 +1081,13 @@
     // --- RENDER HELPERS ---
     function renderImprint(link, step, meta) {
         let html = '';
+        // FIX: Toggle behavior swapped to correctly control Trigger visibility
         const showText = meta.show_text !== false; 
-        html += renderMedia(link.trigger, 'TRIGGER', meta.native_language, link.trigger.translation, null, showText);  
+        
+        // Trigger: Applies showText logic
+        html += renderMedia(link.trigger, 'TRIGGER', meta.native_language, link.trigger.translation, null, showText); 
+        
+        // Response: Always visible
         html += renderMedia(link.response, 'RESPONSE', meta.target_language, link.response.translation, link.response.phonetic, true);
         
         elements.stage.innerHTML = html;
@@ -1110,9 +1109,8 @@
 
         // Render Trigger (Using renderMedia to respect image/text toggles)
         const meta = appState.currentLessonData.meta || {};
-        const showText = meta.show_text !== false;
-let html = renderMedia(link.trigger, '', meta.native_language, null, null, showText);
- 
+        const showText = meta.show_text !== false; 
+        let html = renderMedia(link.trigger, '', meta.native_language, null, null, showText); 
         
         // Render Options Grid
         html += `<div class="audio-options-container">`;
@@ -1369,7 +1367,7 @@ let html = renderMedia(link.trigger, '', meta.native_language, null, null, showT
         
         // Handle "Audio Option" special case
         if (elements.submitBtn.innerText === "CONFIRM" && appState.selectedAudioOption) {
-            val = appState.selectedAudioOption; // Use selected text instead of input
+            val = appState.selectedAudioOption; 
         }
 
         stopTimer();
@@ -1407,6 +1405,13 @@ let html = renderMedia(link.trigger, '', meta.native_language, null, null, showT
         }
         // CASE B: Voice Input
         else if(source === 'voice') {
+            const langCode = (meta.target_language || '').split('-')[0];
+            val = val.replace(/\b\d+\b/g, (match) => {
+                if (DIGIT_MAP[langCode] && DIGIT_MAP[langCode][match]) return DIGIT_MAP[langCode][match];
+                return match;
+            });
+            appState.userInput = val;
+
             if(meta && (meta.target_language.startsWith('ko'))) {
                 const result = koreanMatcher.matchWithAlternatives(appState.voiceCandidates, target, {
                     threshold: meta.voice_threshold || 0.7 
@@ -1490,10 +1495,10 @@ let html = renderMedia(link.trigger, '', meta.native_language, null, null, showT
             
         setTimeout(() => {
             document.body.classList.remove('fail-flash');
-            appState.cumulativeIndex = 0; // Always restart from index 0
+            appState.cumulativeIndex = 0;
             appState.isShowingCorrectAnswer = false;
             
-            // 1. DETERMINE WHICH QUEUE TO RESET
+            // 1. DETERMINE WHICH QUEUE TO SHUFFLE
             let queueToShuffle = null;
             if (appState.inFinalBossMode) {
                 queueToShuffle = appState.finalBossQueue;
@@ -1501,15 +1506,13 @@ let html = renderMedia(link.trigger, '', meta.native_language, null, null, showT
                 queueToShuffle = appState.cumulativeQueue;
             }
 
-            // 2. FIX: ONLY SHUFFLE IF RANDOMIZE IS ENABLED
-            if (meta.randomize && queueToShuffle && queueToShuffle.length > 1) {
+            // 2. SHUFFLE IT (Fisher-Yates)
+            if (queueToShuffle && queueToShuffle.length > 1) {
                 for (let i = queueToShuffle.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [queueToShuffle[i], queueToShuffle[j]] = [queueToShuffle[j], queueToShuffle[i]];
                 }
-                console.log("Queue reshuffled on fail (Randomize: ON).");
-            } else {
-                console.log("Queue retained order on fail (Randomize: OFF).");
+                console.log("Queue reshuffled on fail.");
             }
             
             // 3. RENDER
@@ -1587,60 +1590,28 @@ let html = renderMedia(link.trigger, '', meta.native_language, null, null, showT
     // --- SUB-ROUTINES (CUMULATIVE & FINAL BOSS) ---
     function startCumulativeDrill() {
         if (!appState.passedLinks || appState.passedLinks.length === 0) { nextStep(); return; }
-        
-        appState.inCumulativeMode = true; 
-        appState.cumulativeIndex = 0;
-        
-        // Copy the passed links in their original order
+        appState.inCumulativeMode = true; appState.cumulativeIndex = 0;
         appState.cumulativeQueue = [...appState.passedLinks];
         
-        // FIX: Only shuffle if randomization is enabled in metadata
-        if (appState.currentLessonData.meta && appState.currentLessonData.meta.randomize) {
-            for (let i = appState.cumulativeQueue.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [appState.cumulativeQueue[i], appState.cumulativeQueue[j]] = [appState.cumulativeQueue[j], appState.cumulativeQueue[i]];
-            }
+        // 3. FRESH SHUFFLE EVERY TIME
+        for (let i = appState.cumulativeQueue.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [appState.cumulativeQueue[i], appState.cumulativeQueue[j]] = [appState.cumulativeQueue[j], appState.cumulativeQueue[i]];
         }
         
         renderCumulativeStep();
     }
     
     function renderCumulativeStep() {
-        stopTimer(); 
-        resetInput(); 
-        appState.isShowingCorrectAnswer = false;
-        elements.phaseLabel.classList.remove('cumulative-warning');
-        elements.autoPlayStatus.style.display = 'none';
-
+        stopTimer(); resetInput(); appState.isShowingCorrectAnswer = false;
         const link = appState.cumulativeQueue[appState.cumulativeIndex];
         const meta = appState.currentLessonData.meta || {};
-        
         elements.phaseLabel.innerText = "CUMULATIVE REVIEW";
         elements.phaseLabel.classList.add('cumulative-warning');
         
-        // Render Visuals
         renderInputStrict(link, null, meta);
-        
-        // AUTO-PLAY TRIGGER LOGIC
-        if (meta.audio_autoplay) {
-            // Lock UI & Show Indicator
-            setInputState(false);
-            elements.autoPlayStatus.style.display = 'block';
-            elements.autoPlayStatus.innerText = '🎧 LISTENING...';
-
-            // Play Trigger (Question) Audio
-            speak(link.trigger.text, meta.native_language, () => {
-                // On Finish: Unlock & Start Timer
-                elements.autoPlayStatus.style.display = 'none';
-                setInputState(true);
-                startTimer(7);
-            }, true); // Force 1.0x speed
-        } else {
-            // Standard Visual-Only Start
-            startTimer(7);
-        }
+        startTimer(7);
     }
-
     
     function nextCumulativeStep() {
         appState.cumulativeIndex++;
@@ -1668,38 +1639,14 @@ let html = renderMedia(link.trigger, '', meta.native_language, null, null, showT
     }
     
     function renderFinalBossStep() {
-        stopTimer(); 
-        resetInput(); 
-        appState.isShowingCorrectAnswer = false;
-        elements.autoPlayStatus.style.display = 'none';
-
+        stopTimer(); resetInput(); appState.isShowingCorrectAnswer = false;
         const link = appState.finalBossQueue[appState.cumulativeIndex];
         const meta = appState.currentLessonData.meta || {};
-        
         elements.phaseLabel.innerText = "FINAL BOSS";
         
-        // Render Visuals
         renderInputStrict(link, null, meta);
         elements.input.placeholder = "One last time...";
-        
-        // AUTO-PLAY TRIGGER LOGIC
-        if (meta.audio_autoplay) {
-            // Lock UI & Show Indicator
-            setInputState(false);
-            elements.autoPlayStatus.style.display = 'block';
-            elements.autoPlayStatus.innerText = '🎧 LISTENING...';
-
-            // Play Trigger (Question) Audio
-            speak(link.trigger.text, meta.native_language, () => {
-                // On Finish: Unlock & Start Timer
-                elements.autoPlayStatus.style.display = 'none';
-                setInputState(true);
-                startTimer(7);
-            }, true); // Force 1.0x speed
-        } else {
-            // Standard Visual-Only Start
-            startTimer(7);
-        }
+        startTimer(7);
     }
     
     function nextFinalBossStep() {
