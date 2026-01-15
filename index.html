@@ -1088,8 +1088,8 @@
     function renderImprint(link, step, meta) {
         let html = '';
         const showText = meta.show_text !== false; 
-        html += renderMedia(link.trigger, 'TRIGGER', meta.native_language, link.trigger.translation, null, true); 
-        html += renderMedia(link.response, 'RESPONSE', meta.target_language, link.response.translation, link.response.phonetic, showText);
+        html += renderMedia(link.trigger, 'TRIGGER', meta.native_language, link.trigger.translation, null, showText);  
+        html += renderMedia(link.response, 'RESPONSE', meta.target_language, link.response.translation, link.response.phonetic, true);
         
         elements.stage.innerHTML = html;
         elements.submitBtn.innerText = "READY";
@@ -1110,7 +1110,9 @@
 
         // Render Trigger (Using renderMedia to respect image/text toggles)
         const meta = appState.currentLessonData.meta || {};
-        let html = renderMedia(link.trigger, '', meta.native_language, null, null, true); 
+        const showText = meta.show_text !== false;
+let html = renderMedia(link.trigger, '', meta.native_language, null, null, showText);
+ 
         
         // Render Options Grid
         html += `<div class="audio-options-container">`;
