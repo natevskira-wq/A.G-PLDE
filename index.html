@@ -1097,33 +1097,49 @@
     function renderImprint(link, step, meta) {
         let html = '';
         const showText = meta.show_text !== false; 
-        // 1. Imprint Logic: Check hide_imprint_response
+        // 1. Check if Response should be hidden (Test Mode)
         const hideResponse = meta.hide_imprint_response === true;
 
-        // Trigger (Always shown)
+        // Render Trigger (Always shown)
         html += renderMedia(link.trigger, 'TRIGGER', meta.native_language, link.trigger.translation, null, showText); 
         
-        // Response (Conditional)
+        // Render Response (Conditional)
         if (!hideResponse) {
             html += renderMedia(link.response, 'RESPONSE', meta.target_language, link.response.translation, link.response.phonetic, true);
         }
         
         elements.stage.innerHTML = html;
         elements.submitBtn.innerText = "READY";
-        elements.submitBtn.disabled = false;
+        
+        // Default State: Enabled
         elements.input.style.display = 'none';
         elements.voiceBtn.style.display = 'none';
+        elements.submitBtn.disabled = false;
 
-        // 1. Imprint Auto-Play
+        // 2. Auto-Play Logic (The Fix)
         if (meta.autoplay_imprint) {
+            // A. Lock UI immediately
             setInputState(false); 
+            elements.submitBtn.disabled = true; 
             elements.autoPlayStatus.style.display = 'block';
             elements.autoPlayStatus.innerText = '🎧 LISTENING...';
             
-            speak(link.trigger.text, meta.native_language, () => {
+            let hasUnlocked = false;
+            
+            // B. Unlock Helper (Runs Once)
+            const unlockUI = () => {
+                if (hasUnlocked) return;
+                hasUnlocked = true;
                 elements.autoPlayStatus.style.display = 'none';
-                setInputState(true); 
-            }, true);
+                setInputState(true);
+                elements.submitBtn.disabled = false; // Force enable "READY"
+            };
+
+            // C. Safety Timeout: Force unlock after 4s if TTS fails/hangs
+            setTimeout(unlockUI, 4000);
+            
+            // D. Play Audio with Callback
+            speak(link.trigger.text, meta.native_language, unlockUI, true);
         }
     }
 
