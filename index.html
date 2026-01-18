@@ -233,8 +233,8 @@
         .report-grade { font-size: 60px; font-weight: bold; margin: 20px 0; }
         .placeholder-box { border: 2px dashed #999; padding: 20px; background: #eee; margin: 10px 0; font-size: 14px; color: #555; }
         
-        .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .settings-btn { padding: 8px 12px; font-size: 14px; min-height: auto; }
+        .header-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 10px;}
+        .settings-btn { padding: 8px 12px; font-size: 14px; min-height: auto; width: auto; flex-shrink: 0; }
         
         .voice-feedback { font-size: 12px; color: #666; margin-top: 5px; text-transform: none; letter-spacing: 0; }
         .single-word-display { font-size: 32px; font-weight: bold; margin-bottom: 20px; text-transform: uppercase; letter-spacing: 2px; }
@@ -247,6 +247,16 @@
             font-size: 14px;
             animation: pulse 1.5s infinite;
             margin-bottom: 10px;
+        }
+        
+        /* CREATOR BUTTON */
+        .creator-btn {
+            background-color: #800080;
+            color: white;
+            border-color: #800080;
+        }
+        .creator-btn:hover {
+            background-color: #4b004b;
         }
     </style>
 </head>
@@ -261,6 +271,15 @@
             <div style="margin-bottom: 20px;">
                 <input type="text" id="access-code" placeholder="ENTER CODE" style="text-align: center; font-size: 28px; letter-spacing: 2px;">
             </div>
+            
+            <!-- REMEMBER ME CHECKBOX -->
+            <div style="margin-bottom: 30px;">
+                <label style="font-family: monospace; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: bold;">
+                    <input type="checkbox" id="remember-me-check" checked style="width: 20px; height: 20px; accent-color: black;"> 
+                    REMEMBER ME
+                </label>
+            </div>
+
             <button id="login-btn" style="width: 100%; font-size: 24px;">LOGIN</button>
             <div id="login-status" style="margin-top: 20px; color: red; font-weight: bold;"></div>
             <div style="display:none;">ACCESS LIMITED TO 2 DEVICES PER CODE</div>
@@ -307,7 +326,7 @@
             </div>
         </div>
         
-        <!-- NEW STATUS LINE -->
+        <!-- STATUS LINE -->
         <div id="status-line">Select languages to see availability.</div>
 
         <div style="margin-top: 20px;">
@@ -317,14 +336,19 @@
 
     <!-- DASHBOARD -->
     <div id="dashboard-view" class="view">
-        <div class="header-bar">
+        <div class="header-bar" id="dashboard-header">
             <h1 style="text-transform: uppercase; border-bottom: 3px solid black; padding-bottom: 10px; margin: 0; flex: 1;">DASHBOARD</h1>
-            <button id="change-languages-btn" class="settings-btn" style="width:auto; height:auto;">← CHANGE LANGUAGE/LEVEL</button>
+            <!-- CREATOR BUTTON INJECTED HERE VIA JS -->
+            <button id="change-languages-btn" class="settings-btn">← CHANGE</button>
         </div>
         <div class="breadcrumb-bar" id="dashboard-breadcrumb"><span>LOADING...</span></div>
         <div id="dashboard-status" style="margin-bottom: 20px; font-weight: bold;">Initializing...</div>
         <div id="lessons-container"></div>
-        <div style="margin-top: 50px; text-align: center; font-size: 10px; color: #999; border-top: 1px dashed #ccc; padding-top: 10px;">
+        
+        <!-- LOGOUT BUTTON -->
+        <button id="logout-btn" style="width: 100%; border-color: red; color: red; margin-top: 40px; font-weight: bold;">⏻ LOGOUT</button>
+
+        <div style="margin-top: 30px; text-align: center; font-size: 10px; color: #999; border-top: 1px dashed #ccc; padding-top: 10px;">
             Engineered by Abd-Alrahman.Gamal - 01001395058
         </div>
     </div>
@@ -538,7 +562,10 @@
     const koreanMatcher = new UniversalKoreanMatcher();
 
     // --- CONSTANTS ---
-    const DECAY_MS = 3 * 24 * 60 * 60 * 1000;
+    // SRS: Spaced Repetition System Intervals (Days)
+    const SRS_INTERVALS = [1, 3, 7, 14, 30]; 
+    const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
     const LANGUAGES = [
         { code: "ar", name: "العربية (Arabic)" },
         { code: "de", name: "Deutsch (German)" },
@@ -564,7 +591,7 @@
 
     // --- STATE ---
     const appState = {
-        accessCode: '', deviceFingerprint: '', dbProgress: {},
+        accessCode: '', deviceFingerprint: '', dbProgress: {}, userRole: 'user', 
         userLanguagePair: { native: null, target: null },
         selectedLevel: 'ALL', lessons: [], currentLesson: null, currentLessonData: null,
         currentLinkIndex: 0, currentStepKey: '1_model', userInput: '', isAnswered: false,
@@ -576,7 +603,8 @@
         cumulativeQueue: [], finalBossQueue: [], cumulativeIndex: 0,
         voiceCandidates: [],
         selectedAudioOption: null,
-        allLessonsMeta: [] // For status line
+        allLessonsMeta: [], 
+        isDrillActive: false
     };
 
     // --- HELPER: TIME MULTIPLIER ---
@@ -665,11 +693,19 @@
         // 1. Fetch All Meta for Status Line
         fetchAllLessonMeta();
         
-        history.replaceState({ view: 'login-view' }, "", "#login");
-        document.getElementById('login-view').classList.add('active');
+        // Auto-Login Logic
+        const sessionCode = sessionStorage.getItem('PLDE_CODE');
+        const localCode = localStorage.getItem('PLDE_CODE');
+        const savedCode = sessionCode || localCode;
 
-        const savedCode = localStorage.getItem('PLDE_CODE');
-        if (savedCode) { elements.accessCodeInput.value = savedCode; handleLogin(); }
+        if (savedCode) {
+             elements.accessCodeInput.value = savedCode;
+             // Use 'none' to avoid overwriting existing storage preference
+             attemptLogin(savedCode, 'none'); 
+        } else {
+             history.replaceState({ view: 'login-view' }, "", "#login");
+             document.getElementById('login-view').classList.add('active');
+        }
     });
 
     function cacheElements() {
@@ -677,6 +713,7 @@
         elements.loginBtn = document.getElementById('login-btn');
         elements.accessCodeInput = document.getElementById('access-code');
         elements.loginStatus = document.getElementById('login-status');
+        elements.rememberCheck = document.getElementById('remember-me-check'); 
         
         elements.langView = document.getElementById('language-selector-view');
         elements.dashView = document.getElementById('dashboard-view');
@@ -688,6 +725,7 @@
         elements.startBtn = document.getElementById('start-learning-btn');
         elements.changeLangBtn = document.getElementById('change-languages-btn');
         elements.statusLine = document.getElementById('status-line'); 
+        elements.dashHeader = document.getElementById('dashboard-header'); // NEW
         
         elements.container = document.getElementById('lessons-container');
         elements.status = document.getElementById('dashboard-status');
@@ -706,8 +744,8 @@
         elements.drillBreadcrumb = document.getElementById('drill-breadcrumb');
         elements.drillLevelInd = document.getElementById('drill-level-indicator');
         
-        // Auto-play indicator
         elements.autoPlayStatus = document.getElementById('autoplay-status');
+        elements.logoutBtn = document.getElementById('logout-btn'); // NEW
     }
 
     // --- NAVIGATION ---
@@ -722,17 +760,33 @@
     }
 
     window.onpopstate = (event) => {
-        if (event.state && event.state.view) {
-            const viewId = event.state.view;
-            if (elements.drillView.classList.contains('active') && viewId !== 'drill-view') {
+        if (appState.isDrillActive) {
+            if (confirm("Quit Lesson? Progress will be lost.")) {
+                appState.isDrillActive = false;
                 stopTimer();
                 if(appState.isListening && appState.speechRecognition) appState.speechRecognition.stop();
+                if (window.speechSynthesis) window.speechSynthesis.cancel();
+            } else {
+                history.pushState({ view: 'drill-view' }, "", "#drill");
+                return;
             }
+        }
+
+        if (event.state && event.state.view) {
+            const viewId = event.state.view;
             document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
             document.getElementById(viewId).classList.add('active');
         } else {
             document.querySelectorAll('.view').forEach(el => el.classList.remove('active'));
             elements.loginView.classList.add('active');
+        }
+    };
+    
+    window.onbeforeunload = (e) => {
+        if (appState.isDrillActive) {
+            e.preventDefault();
+            e.returnValue = "Quit?";
+            return "Quit?";
         }
     };
 
@@ -753,14 +807,19 @@
 
     // --- AUTH ---
     function generateFingerprint() { appState.deviceFingerprint = navigator.userAgent + screen.width + screen.height; }
+    
     function handleLogin() {
         const code = elements.accessCodeInput.value.trim().toUpperCase();
         if (!code) { elements.loginStatus.innerText = "PLEASE ENTER A CODE"; return; }
+        
+        const remember = elements.rememberCheck.checked;
+        const storageStrategy = remember ? 'local' : 'session';
+        
         elements.loginBtn.disabled = true; elements.loginStatus.innerText = "VERIFYING...";
-        attemptLogin(code);
+        attemptLogin(code, storageStrategy);
     }
     
-    async function attemptLogin(code) {
+    async function attemptLogin(code, storageStrategy = 'none') {
         if (!supabaseClient) { elements.loginStatus.innerText = "DB ERROR"; return; }
         try {
             const { data: row, error } = await supabaseClient.from('user_profiles').select('*').eq('access_code', code).single();
@@ -775,25 +834,63 @@
             if (!granted) { elements.loginStatus.innerText = "DEVICE LIMIT (MAX 2)"; elements.loginBtn.disabled = false; return; }
             if (update) await supabaseClient.from('user_profiles').update(update).eq('access_code', code);
             
-            appState.accessCode = code; appState.dbProgress = row.progress || {};
-            localStorage.setItem('PLDE_CODE', code);
+            appState.accessCode = code; 
+            appState.dbProgress = row.progress || {};
+            appState.userRole = row.role || 'user'; // NEW: Store Role
+            
+            if (storageStrategy === 'local') localStorage.setItem('PLDE_CODE', code);
+            if (storageStrategy === 'session') sessionStorage.setItem('PLDE_CODE', code);
+            
             navigateTo('language-selector-view');
             checkSavedLanguagePairDropdowns(); 
-            // 1. UI Polish: We fetch meta for status line now
             fetchAllLessonMeta(); 
         } catch (e) { elements.loginStatus.innerText = "SYSTEM ERROR"; elements.loginBtn.disabled = false; }
+    }
+    
+    function doLogout() {
+        if(confirm('Log out from this device?')) {
+            localStorage.removeItem('PLDE_CODE');
+            sessionStorage.removeItem('PLDE_CODE');
+            window.location.reload();
+        }
     }
 
     // --- DATA & SYNC ---
     function getCurrentLevelKey() { return `${appState.userLanguagePair.native}_${appState.userLanguagePair.target}_${appState.selectedLevel}`; }
+    
+    // UPDATED SRS LOGIC
     async function saveProgress(lessonId, score) {
         const key = getCurrentLevelKey();
         if (!appState.dbProgress[key]) appState.dbProgress[key] = {};
-        const currentEntry = appState.dbProgress[key][lessonId];
-        const currentBest = currentEntry ? (currentEntry.score || 0) : 0;
         
-        if (score >= currentBest) appState.dbProgress[key][lessonId] = { score: score, lastPlayed: Date.now() };
-        else if (score >= 80 && currentEntry) currentEntry.lastPlayed = Date.now();
+        const currentEntry = appState.dbProgress[key][lessonId];
+        
+        // Determine current SRS Level (Default 1 if new or legacy data)
+        let currentLevel = 0;
+        if (currentEntry && typeof currentEntry === 'object') {
+            currentLevel = currentEntry.srsLevel || 1;
+        }
+
+        // SRS Promotion Logic
+        let newLevel = 1;
+        if (score >= 90) {
+            // Success: Promote (Max Level 5)
+            // If it's a new lesson (level 0), it becomes level 1. If level 1 -> 2, etc.
+            newLevel = Math.min(5, currentLevel + 1);
+        } else {
+            // Failure: Reset to Level 1
+            newLevel = 1;
+        }
+
+        // Preserve "Best Score" for display, but update "Last Played" for decay
+        const bestScore = currentEntry ? (currentEntry.score || 0) : 0;
+        const finalScore = Math.max(bestScore, score);
+
+        appState.dbProgress[key][lessonId] = {
+            score: finalScore,
+            lastPlayed: Date.now(),
+            srsLevel: newLevel
+        };
 
         try { await supabaseClient.from('user_profiles').update({ progress: appState.dbProgress }).eq('access_code', appState.accessCode); } 
         catch (e) { console.error("Sync Error", e); }
@@ -875,14 +972,23 @@
         elements.status.innerText = 'LOADING LESSONS...';
         try {
             const { data } = await supabaseClient.from('lessons').select('*').order('created_at', { ascending: true });
+            
+            // FILTER LOGIC UPDATE: OWNER + PUBLIC + LANG
             appState.lessons = (data || []).filter(l => {
                 try {
                     const c = (typeof l.content === 'string') ? JSON.parse(l.content) : l.content;
                     if (!c.meta) return false;
+                    
+                    // 1. Ownership Check
+                    const ownerCode = l.owner_code;
+                    const isMyPrivate = ownerCode === appState.accessCode;
+                    const isPublic = !ownerCode; 
+                    if (!isPublic && !isMyPrivate) return false; // Hide others' private lessons
+
                     const dbNative = c.meta.native_language || '';
                     const dbTarget = c.meta.target_language || '';
                     
-                    // 4. FILTER LOGIC VERIFICATION: Preserved
+                    // 2. Lang Check
                     const matchNative = dbNative.startsWith(appState.userLanguagePair.native);
                     const matchTarget = dbTarget.startsWith(appState.userLanguagePair.target);
                     const matchLevel = (appState.selectedLevel === 'ALL' || c.meta.level === appState.selectedLevel);
@@ -913,6 +1019,21 @@
         elements.container.innerHTML = '';
         const levelProgress = appState.dbProgress[getCurrentLevelKey()] || {};
         
+        // NEW: STUDIO BUTTON CHECK
+        const existingCreatorBtn = document.getElementById('studio-btn');
+        if (existingCreatorBtn) existingCreatorBtn.remove();
+        
+        if (['admin', 'creator'].includes(appState.userRole)) {
+            const btn = document.createElement('button');
+            btn.id = 'studio-btn';
+            btn.className = 'settings-btn creator-btn';
+            btn.innerText = '🛠️ LESSON STUDIO';
+            btn.onclick = () => window.open('https://natevskira-wq.github.io/PLDE-Lesson-Generator/', '_blank');
+            // Insert before Change button
+            const changeBtn = document.getElementById('change-languages-btn');
+            elements.dashHeader.insertBefore(btn, changeBtn);
+        }
+        
         if (appState.lessons.length === 0) {
             elements.container.innerHTML = `
                 <div style="padding:40px; text-align:center; border: 3px dashed #ccc;">
@@ -926,29 +1047,79 @@
 
         let hasDecayDebt = false;
         const now = Date.now();
+        
+        // DECAY CHECK LOOP
         for (const lesson of appState.lessons) {
             const entry = levelProgress[lesson.id];
-            if (entry && (entry.score || 0) > 0) {
-                const lastPlayed = entry.lastPlayed || 0;
-                if (lastPlayed > 0 && (now - lastPlayed) > DECAY_MS) { hasDecayDebt = true; break; }
+            
+            if (entry) {
+                // Get Last Played & SRS Level
+                let lastPlayed = 0;
+                let srsLevel = 1;
+                
+                if (typeof entry === 'object') {
+                    lastPlayed = entry.lastPlayed || 0;
+                    srsLevel = entry.srsLevel || 1;
+                } else {
+                    // Legacy (Number only)
+                    lastPlayed = 0; // Force decay if old data
+                }
+
+                // If never played (score 0), no decay
+                const score = (typeof entry === 'object') ? entry.score : entry;
+                
+                if (score > 0) {
+                    const intervalDays = SRS_INTERVALS[srsLevel - 1] || 1;
+                    const msRequired = intervalDays * ONE_DAY_MS;
+                    const msSince = now - lastPlayed;
+                    
+                    if (msSince > msRequired) {
+                        hasDecayDebt = true;
+                        break; 
+                    }
+                }
             }
         }
+        
         if (hasDecayDebt) elements.status.innerHTML = `<span style="color:red; font-weight:bold;">⚠️ DECAY DETECTED. REFRESH OLD LESSONS.</span>`;
 
         appState.lessons.forEach((lesson, index) => {
             const btn = document.createElement('button');
             btn.className = 'lesson-btn';
-            const entry = levelProgress[lesson.id];
-            const score = entry ? (entry.score || 0) : 0;
-            const lastPlayed = entry ? (entry.lastPlayed || 0) : 0;
-            const isDecayed = (score > 0) && (lastPlayed > 0 && (now - lastPlayed) > DECAY_MS);
             
+            const entry = levelProgress[lesson.id];
+            let score = 0;
+            let lastPlayed = 0;
+            let srsLevel = 1;
+
+            if (entry) {
+                if (typeof entry === 'object') {
+                    score = entry.score || 0;
+                    lastPlayed = entry.lastPlayed || 0;
+                    srsLevel = entry.srsLevel || 1;
+                } else {
+                    score = entry; 
+                }
+            }
+            
+            // Check Individual Lesson Decay
+            let isDecayed = false;
+            if (score > 0) {
+                const intervalDays = SRS_INTERVALS[srsLevel - 1] || 1;
+                const msRequired = intervalDays * ONE_DAY_MS;
+                if ((now - lastPlayed) > msRequired) isDecayed = true;
+            }
+
             let isLocked = false, lockReason = "";
             if (index > 0) {
                 const prevId = appState.lessons[index - 1].id;
-                const prevScore = levelProgress[prevId] ? (levelProgress[prevId].score || 0) : 0;
+                const prevEntry = levelProgress[prevId];
+                const prevScore = prevEntry ? (typeof prevEntry === 'object' ? prevEntry.score : prevEntry) : 0;
+                
                 if (prevScore < 90) { isLocked = true; lockReason = "PREV < 90%"; }
             }
+            
+            // Strict Decay Rule: Lock NEW lessons if DEBT exists
             if (hasDecayDebt && score === 0) { isLocked = true; lockReason = "FIX DECAY"; }
 
             const c = (typeof lesson.content === 'string') ? JSON.parse(lesson.content) : lesson.content;
@@ -958,10 +1129,10 @@
                 badge = `<span class="score-badge">🔒 ${lockReason}</span>`;
                 btn.classList.add('locked'); btn.disabled = true;
             } else if (isDecayed) {
-                badge = `<span class="score-badge badge-yellow">⚠️ REFRESH (${score}%)</span>`;
+                badge = `<span class="score-badge badge-yellow">⚠️ REFRESH (L${srsLevel})</span>`;
                 btn.classList.add('decayed'); btn.onclick = () => loadLesson(lesson);
             } else if (score >= 90) {
-                badge = `<span class="score-badge badge-green">MASTERED (${score}%)</span>`;
+                badge = `<span class="score-badge badge-green">MASTERED (L${srsLevel})</span>`;
                 btn.onclick = () => loadLesson(lesson);
             } else if (score > 0) {
                 badge = `<span class="score-badge">BEST: ${score}%</span>`;
@@ -992,6 +1163,7 @@
             appState.startTime = Date.now(); appState.mistakeCount = 0; appState.linksPassed = 0;
             appState.inCumulativeMode = false; appState.inFinalBossMode = false;
             appState.passedLinks = []; appState.finalBossQueue = [];
+            appState.isDrillActive = true; 
             
             navigateTo('drill-view'); startDrill();
         } catch(e) { alert(e.message); }
@@ -1161,13 +1333,9 @@
 
     function renderInputStrict(link, step, meta) {
         let html = `<div style="font-size:32px; font-weight:bold; margin-bottom:20px;">`;
-        // Use renderMedia helper logic for the trigger content itself if needed, but for Strict Input we usually want text
-        // However, let's respect "Hide Text" for the trigger here too:
-        const showText = meta.show_text !== false;
-        
-        // Custom rendering for strict input trigger to allow hide-text + audio icon
-        html += renderMedia(link.trigger, '', meta.native_language, link.trigger.translation, link.trigger.phonetic, showText);
-
+        html += `<span class="speakable" onclick="speak('${link.trigger.text.replace(/'/g, "\\'")}', '${meta.native_language}')">${link.trigger.text}</span>`;
+        if (link.trigger.translation) html += `<div class="translation-text">${link.trigger.translation}</div>`;
+        if (link.trigger.phonetic) html += `<div class="phonetic-text">${link.trigger.phonetic}</div>`;
         html += `</div>`;
         
         // AUDIO MATCHER SAFETY MODE
@@ -1541,10 +1709,13 @@
             appState.cumulativeIndex = 0;
             appState.isShowingCorrectAnswer = false;
             
-            // 1. Determine Queue
+            // 1. DETERMINE WHICH QUEUE TO SHUFFLE
             let queueToShuffle = null;
-            if (appState.inFinalBossMode) queueToShuffle = appState.finalBossQueue;
-            else if (appState.inCumulativeMode) queueToShuffle = appState.cumulativeQueue;
+            if (appState.inFinalBossMode) {
+                queueToShuffle = appState.finalBossQueue;
+            } else if (appState.inCumulativeMode) {
+                queueToShuffle = appState.cumulativeQueue;
+            }
 
             // 2. FIX: Shuffle ONLY if Randomized is ON
             if (meta.randomize && queueToShuffle && queueToShuffle.length > 1) {
@@ -1552,11 +1723,15 @@
                     const j = Math.floor(Math.random() * (i + 1));
                     [queueToShuffle[i], queueToShuffle[j]] = [queueToShuffle[j], queueToShuffle[i]];
                 }
+                console.log("Queue reshuffled on fail.");
             }
             
-            // 3. Render
-            if (appState.inFinalBossMode) renderFinalBossStep();
-            else renderCumulativeStep();
+            // 3. RENDER
+            if (appState.inFinalBossMode) {
+                renderFinalBossStep();
+            } else {
+                renderCumulativeStep();
+            }
         }, 2500);
     }
 
@@ -1643,16 +1818,11 @@
     
     function renderCumulativeStep() {
         stopTimer(); resetInput(); appState.isShowingCorrectAnswer = false;
-        elements.phaseLabel.classList.remove('cumulative-warning');
-        elements.autoPlayStatus.style.display = 'none';
-
         const link = appState.cumulativeQueue[appState.cumulativeIndex];
         const meta = appState.currentLessonData.meta || {};
-        
         elements.phaseLabel.innerText = "CUMULATIVE REVIEW";
         elements.phaseLabel.classList.add('cumulative-warning');
         
-        // Render Visuals
         renderInputStrict(link, null, meta);
         
         // AUTO-PLAY TRIGGER LOGIC (Fix: Use autoplay_drill or audio_autoplay)
@@ -1796,6 +1966,9 @@
         
         elements.changeLangBtn.onclick = () => history.back();
         document.getElementById('back-btn').onclick = () => history.back();
+        
+        // NEW: Logout Button
+        elements.logoutBtn.onclick = doLogout;
 
         elements.input.oninput = (e) => { appState.userInput = e.target.value; elements.submitBtn.disabled = !e.target.value.trim(); };
         elements.input.onkeydown = (e) => { 
