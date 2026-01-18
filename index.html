@@ -76,31 +76,19 @@
 
         /* CREDITS FOOTER */
         .credits-footer {
-            margin-top: 60px;
-            text-align: center;
-            border-top: 2px solid #000; /* Thicker, solid black line */
-            padding-top: 20px;
-            color: #000; /* Solid Black */
+            margin-top: 60px; text-align: center; border-top: 2px solid #000;
+            padding-top: 20px; color: #000;
         }
         .credits-name {
-            font-weight: 900; /* Extra Bold */
-            color: #000;
-            font-size: 22px; /* Biggest */
-            letter-spacing: 1px;
-            margin-bottom: 8px;
+            font-weight: 900; color: #000; font-size: 22px;
+            letter-spacing: 1px; margin-bottom: 8px;
         }
         .credits-phone {
-            font-weight: bold;
-            font-size: 18px; /* Medium */
-            color: #000;
-            margin-bottom: 8px;
-            font-family: monospace;
+            font-weight: bold; font-size: 18px; color: #000;
+            margin-bottom: 8px; font-family: monospace;
         }
         .credits-title {
-            font-size: 14px; /* Smallest */
-            font-weight: bold;
-            letter-spacing: 2px;
-            color: #000;
+            font-size: 14px; font-weight: bold; letter-spacing: 2px; color: #000;
         }
         
         /* STICKY TIMER */
@@ -299,7 +287,6 @@
             </div>
             <div class="language-pair">
                 <label class="language-label">DIFFICULTY</label>
-                <!-- MICRO-LEVELS -->
                 <select id="level-select">
                     <option value="ALL">ALL LEVELS</option>
                     <option value="A1">A1 (BEGINNER)</option>
@@ -320,7 +307,7 @@
             </div>
         </div>
         
-        <!-- STATUS LINE -->
+        <!-- NEW STATUS LINE -->
         <div id="status-line">Select languages to see availability.</div>
 
         <div style="margin-top: 20px;">
@@ -867,6 +854,7 @@
 
         const count = appState.allLessonsMeta.filter(m => {
             if (!m) return false;
+            // 4. FILTER LOGIC VERIFICATION: StartsWith Logic preserved
             const matchN = m.native_language && m.native_language.startsWith(n);
             const matchT = m.target_language && m.target_language.startsWith(t);
             const matchL = (l === 'ALL' || m.level === l);
@@ -1035,9 +1023,7 @@
         else elements.input.style.display = 'block';
         
         // AUTO-PLAY LOGIC
-        // Update logic: Check meta.autoplay_drill (new) OR legacy meta.audio_autoplay
-        // Also check if step is NOT imprint unless imprint autoplay is also requested separately
-        let shouldAutoPlay = (meta.autoplay_drill === true || meta.audio_autoplay === true) && step.type !== 'imprint';
+        let shouldAutoPlay = (meta.audio_autoplay === true && step.type !== 'imprint');
         
         switch (step.type) {
             case 'imprint': renderImprint(link, step, meta); break;
@@ -1116,29 +1102,22 @@
         elements.voiceBtn.style.display = 'none';
         elements.submitBtn.disabled = false;
 
-        // 2. Auto-Play Logic (The Fix)
+        // 2. Auto-Play Logic
         if (meta.autoplay_imprint) {
-            // A. Lock UI immediately
             setInputState(false); 
             elements.submitBtn.disabled = true; 
             elements.autoPlayStatus.style.display = 'block';
             elements.autoPlayStatus.innerText = '🎧 LISTENING...';
             
             let hasUnlocked = false;
-            
-            // B. Unlock Helper (Runs Once)
             const unlockUI = () => {
                 if (hasUnlocked) return;
                 hasUnlocked = true;
                 elements.autoPlayStatus.style.display = 'none';
                 setInputState(true);
-                elements.submitBtn.disabled = false; // Force enable "READY"
+                elements.submitBtn.disabled = false;
             };
-
-            // C. Safety Timeout: Force unlock after 4s if TTS fails/hangs
-            setTimeout(unlockUI, 4000);
-            
-            // D. Play Audio with Callback
+            setTimeout(unlockUI, 4000); // Safety Timeout
             speak(link.trigger.text, meta.native_language, unlockUI, true);
         }
     }
@@ -1182,9 +1161,13 @@
 
     function renderInputStrict(link, step, meta) {
         let html = `<div style="font-size:32px; font-weight:bold; margin-bottom:20px;">`;
-        html += `<span class="speakable" onclick="speak('${link.trigger.text.replace(/'/g, "\\'")}', '${meta.native_language}')">${link.trigger.text}</span>`;
-        if (link.trigger.translation) html += `<div class="translation-text">${link.trigger.translation}</div>`;
-        if (link.trigger.phonetic) html += `<div class="phonetic-text">${link.trigger.phonetic}</div>`;
+        // Use renderMedia helper logic for the trigger content itself if needed, but for Strict Input we usually want text
+        // However, let's respect "Hide Text" for the trigger here too:
+        const showText = meta.show_text !== false;
+        
+        // Custom rendering for strict input trigger to allow hide-text + audio icon
+        html += renderMedia(link.trigger, '', meta.native_language, link.trigger.translation, link.trigger.phonetic, showText);
+
         html += `</div>`;
         
         // AUDIO MATCHER SAFETY MODE
@@ -1279,6 +1262,9 @@
     function renderMedia(obj, label, lang, translation, phonetic, showText = true) {
         if (!obj) return '';
         const meta = appState.currentLessonData.meta || {};
+        
+        // Final visibility logic: Caller request AND Meta setting
+        const textVisible = showText && (meta.show_text !== false);
         const showTrans = meta.show_translation === true;
         const showPhone = meta.show_phonetic === true;
         const hasImage = obj.image_url && obj.image_url !== 'placeholder';
@@ -1286,24 +1272,29 @@
         let out = '<div style="margin: 15px 0;">';
         if (label) out += `<div style="font-size:12px; letter-spacing:2px; margin-bottom:5px;">${label}</div>`;
 
-        // VISUAL TRIGGER MODE (Image Only)
-        if (!showText && hasImage) {
+        const safeText = obj.text ? obj.text.replace(/'/g, "\\'") : "";
+
+        // 1. IMAGE ONLY MODE
+        if (!textVisible && hasImage) {
              out += `<img src="${obj.image_url}" style="max-width:100%; max-height:300px; border: 2px solid #000; margin-bottom:10px;">`;
         }
-        // STANDARD MODE (Text + Optional Image)
+        // 2. AUDIO ONLY MODE (No Text, No Image)
+        else if (!textVisible && !hasImage) {
+             out += `<div class="speakable" style="font-size:60px; cursor:pointer;" onclick="speak('${safeText}', '${lang}')">🔊</div>`;
+             out += `<div style="font-size:12px; color:#999; margin-top:5px;">(Listen)</div>`;
+        }
+        // 3. STANDARD MODE (Text + Optional Image)
         else {
-            if (showText && obj.text) {
-                const safeText = obj.text.replace(/'/g, "\\'");
+            if (obj.text) {
                 out += `<div class="speakable" style="font-size:28px; font-weight:bold;" onclick="speak('${safeText}', '${lang}')">${obj.text}</div>`;
             }
-
-            if (translation && showTrans) out += `<div class="translation-text">${translation}</div>`;
-            if (phonetic && showPhone) out += `<div class="phonetic-text">${phonetic}</div>`;
-
             if (hasImage) {
                 out += `<img src="${obj.image_url}" style="max-width:100%; max-height:200px; margin-top:10px;">`;
             }
         }
+
+        if (translation && showTrans) out += `<div class="translation-text">${translation}</div>`;
+        if (phonetic && showPhone) out += `<div class="phonetic-text">${phonetic}</div>`;
 
         if (obj.audio_url && obj.audio_url !== 'placeholder') {
             out += `<audio controls src="${obj.audio_url}" autoplay style="margin-top:10px; height:30px;"></audio>`;
@@ -1316,7 +1307,13 @@
         elements.input.style.display = 'none';
         elements.voiceBtn.style.display = 'none';
         elements.submitBtn.style.display = 'none'; 
-        let html = `<div style="margin-bottom:30px; font-weight:bold; font-size:36px;">${link.trigger.text}</div>`;
+        
+        const meta = appState.currentLessonData.meta || {};
+        const showText = meta.show_text !== false;
+
+        // Use renderMedia to respect settings
+        let html = renderMedia(link.trigger, '', meta.native_language, null, null, showText);
+        
         step.options.forEach(opt => {
             html += `<button class="option-btn" onclick="validate('${opt.replace(/'/g, "\\'")}', 'keyboard')">${opt}</button>`;
         });
@@ -1413,7 +1410,7 @@
         
         // Handle "Audio Option" special case
         if (elements.submitBtn.innerText === "CONFIRM" && appState.selectedAudioOption) {
-            val = appState.selectedAudioOption; // Use selected text instead of input
+            val = appState.selectedAudioOption; 
         }
 
         stopTimer();
@@ -1544,30 +1541,22 @@
             appState.cumulativeIndex = 0;
             appState.isShowingCorrectAnswer = false;
             
-            // 1. DETERMINE WHICH QUEUE TO SHUFFLE
+            // 1. Determine Queue
             let queueToShuffle = null;
-            if (appState.inFinalBossMode) {
-                queueToShuffle = appState.finalBossQueue;
-            } else if (appState.inCumulativeMode) {
-                queueToShuffle = appState.cumulativeQueue;
-            }
+            if (appState.inFinalBossMode) queueToShuffle = appState.finalBossQueue;
+            else if (appState.inCumulativeMode) queueToShuffle = appState.cumulativeQueue;
 
-            // 2. SHUFFLE IT (Fisher-Yates) (Fix: Check meta.randomize)
-            // 3. Cumulative Logic Upgrade: Always shuffle on restart for better retention?
-            // User request: "Refresh Shuffle" -> Yes, shuffle on restart.
-            if (queueToShuffle && queueToShuffle.length > 1) {
+            // 2. FIX: Shuffle ONLY if Randomized is ON
+            if (meta.randomize && queueToShuffle && queueToShuffle.length > 1) {
                 for (let i = queueToShuffle.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1));
                     [queueToShuffle[i], queueToShuffle[j]] = [queueToShuffle[j], queueToShuffle[i]];
                 }
             }
             
-            // 3. RENDER
-            if (appState.inFinalBossMode) {
-                renderFinalBossStep();
-            } else {
-                renderCumulativeStep();
-            }
+            // 3. Render
+            if (appState.inFinalBossMode) renderFinalBossStep();
+            else renderCumulativeStep();
         }, 2500);
     }
 
@@ -1641,10 +1630,12 @@
         appState.inCumulativeMode = true; appState.cumulativeIndex = 0;
         appState.cumulativeQueue = [...appState.passedLinks];
         
-        // 3. FRESH SHUFFLE EVERY TIME
-        for (let i = appState.cumulativeQueue.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [appState.cumulativeQueue[i], appState.cumulativeQueue[j]] = [appState.cumulativeQueue[j], appState.cumulativeQueue[i]];
+        // FIX: Only shuffle if randomization is enabled in metadata
+        if (appState.currentLessonData.meta && appState.currentLessonData.meta.randomize) {
+            for (let i = appState.cumulativeQueue.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [appState.cumulativeQueue[i], appState.cumulativeQueue[j]] = [appState.cumulativeQueue[j], appState.cumulativeQueue[i]];
+            }
         }
         
         renderCumulativeStep();
@@ -1701,7 +1692,18 @@
             return;
         }
         appState.inFinalBossMode = true;
+        // Copy the links
         appState.finalBossQueue = [...appState.currentLessonData.links];
+        
+        // FIX: Explicitly Re-Shuffle IF meta.randomize is TRUE.
+        // If false, it keeps the original linear order.
+        if (appState.currentLessonData.meta && appState.currentLessonData.meta.randomize) {
+            for (let i = appState.finalBossQueue.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [appState.finalBossQueue[i], appState.finalBossQueue[j]] = [appState.finalBossQueue[j], appState.finalBossQueue[i]];
+            }
+        }
+
         appState.cumulativeIndex = 0;
         renderFinalBossStep();
     }
