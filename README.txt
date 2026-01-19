@@ -80,7 +80,7 @@ Private/Public: Creators can publish lessons visible only to themselves or to ev
 
 AI Station: Paste prompts to auto-generate complex JSON structures.
 
-3. The God Mode (manager.html)
+3. The manager Mode (manager.html)
 
 User Management: Issue Access Codes in batches.
 
