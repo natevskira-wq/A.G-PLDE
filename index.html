@@ -261,6 +261,14 @@
     </style>
 </head>
 <body>
+    <!-- AUDIO INITIALIZATION OVERLAY -->
+<div id="loading-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:3000; align-items:center; justify-content:center; flex-direction:column;">
+    <div style="font-size:24px; font-weight:bold; letter-spacing:2px; margin-bottom:20px; text-transform:uppercase;">INITIALIZING NEURAL VOICE...</div>
+    <div style="width:50px; height:50px; border:5px solid black; border-top:5px solid transparent; border-radius:50%; animation:spin 1s linear infinite;"></div>
+</div>
+<style>
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
 <div class="app-container">
 
     <!-- LOGIN -->
@@ -646,13 +654,20 @@
     // --- INVISIBLE TTS ---
     let ttsState = { text: '', speed: 1.0 };
 
+    // --- INVISIBLE TTS ENGINE (ROBUST V2) ---
+    let ttsState = { text: '', speed: 1.0 };
+    window.utterances = []; // PREVENTS CHROME GARBAGE COLLECTION BUG
+
     function speak(text, lang, onEndCallback, forceNormal = false) {
         if (!text || !window.speechSynthesis) {
             if(onEndCallback) onEndCallback();
             return;
         }
+
+        // Cancel any current speaking
         window.speechSynthesis.cancel();
 
+        // Speed Logic
         if (forceNormal) {
             ttsState.speed = 1.0;
         } else {
@@ -667,6 +682,7 @@
         const u = new SpeechSynthesisUtterance(text);
         u.rate = ttsState.speed;
         
+        // Voice Selection Logic
         const voices = window.speechSynthesis.getVoices();
         const candidates = voices.filter(v => v.lang === lang || v.lang.startsWith(lang));
         let voice = candidates.find(v => v.name.includes("Google")) || candidates[0];
@@ -674,10 +690,21 @@
         if (voice) u.voice = voice;
         else u.lang = lang;
 
-        if (onEndCallback) {
-            u.onend = onEndCallback;
-            u.onerror = onEndCallback; 
-        }
+        // Callback Wrapper
+        const finish = () => {
+            // Remove this utterance from the global array to allow GC
+            window.utterances = window.utterances.filter(utt => utt !== u);
+            if (onEndCallback) onEndCallback();
+        };
+
+        u.onend = finish;
+        u.onerror = (e) => {
+            console.warn("TTS Error:", e);
+            finish(); // Ensure UI unlocks even on error
+        };
+
+        // Add to global array to prevent GC
+        window.utterances.push(u);
 
         window.speechSynthesis.speak(u);
     }
@@ -1124,11 +1151,56 @@
         });
     }
 
-    function loadLesson(lesson) {
+    // --- AUDIO WAKE-UP HELPER ---
+    function wakeUpAudio() {
+        return new Promise(resolve => {
+            if (!window.speechSynthesis) return resolve();
+            
+            // Cancel any lingering audio
+            window.speechSynthesis.cancel();
+            
+            // Create a short, silent utterance
+            const u = new SpeechSynthesisUtterance(".");
+            u.volume = 0; // Silent
+            u.rate = 2.0; // Fast
+            
+            // Safety timeout: Ensure we don't hang if TTS is broken (1.5s max)
+            const safety = setTimeout(() => {
+                console.log("Audio wake-up timeout (proceeding anyway)");
+                resolve();
+            }, 1500);
+            
+            u.onend = () => {
+                clearTimeout(safety);
+                console.log("Audio engine initialized.");
+                resolve();
+            };
+            
+            u.onerror = (e) => {
+                clearTimeout(safety);
+                console.warn("Audio wake-up error", e);
+                resolve(); // Proceed anyway
+            };
+
+            // Fire!
+            window.speechSynthesis.speak(u);
+        });
+    }
+
+    async function loadLesson(lesson) {
         try {
             let c = (typeof lesson.content === 'string') ? JSON.parse(lesson.content) : lesson.content;
             if (!c.links) throw new Error('Bad Data');
-            appState.currentLesson = lesson; appState.currentLessonData = c;
+            
+            // 1. Show "Pro" Loading Screen
+            document.getElementById('loading-overlay').style.display = 'flex';
+            
+            // 2. Force Audio Engine Wake-Up (Silent)
+            await wakeUpAudio();
+            
+            // 3. Setup Lesson State
+            appState.currentLesson = lesson;
+            appState.currentLessonData = c;
             
             if(c.meta?.randomize) {
                 const arr = [...c.links];
@@ -1136,14 +1208,26 @@
                 appState.currentLessonData.links = arr;
             }
 
-            appState.currentLinkIndex = 0; appState.currentStepKey = '1_model';
-            appState.startTime = Date.now(); appState.mistakeCount = 0; appState.linksPassed = 0;
-            appState.inCumulativeMode = false; appState.inFinalBossMode = false;
-            appState.passedLinks = []; appState.finalBossQueue = [];
+            appState.currentLinkIndex = 0;
+            appState.currentStepKey = '1_model';
+            appState.startTime = Date.now();
+            appState.mistakeCount = 0;
+            appState.linksPassed = 0;
+            appState.inCumulativeMode = false;
+            appState.inFinalBossMode = false;
+            appState.passedLinks = [];
+            appState.finalBossQueue = [];
             appState.isDrillActive = true; 
             
-            navigateTo('drill-view'); startDrill();
-        } catch(e) { alert(e.message); }
+            // 4. Hide Overlay and Go
+            document.getElementById('loading-overlay').style.display = 'none';
+            navigateTo('drill-view');
+            startDrill();
+
+        } catch(e) { 
+            document.getElementById('loading-overlay').style.display = 'none';
+            alert(e.message); 
+        }
     }
 
     function startDrill() {
@@ -1184,45 +1268,42 @@
             default: elements.stage.innerHTML = `ERR: ${step.type}`;
         }
         
-        // --- TIMER CALCULATION ---
-        let finalTime = 0;
-        if (step.time_limit) {
-            let baseTime = step.time_limit;
+        // --- TIMER & AUTO-PLAY ---
+        let baseTime = step.time_limit || 0;
+        let finalTime = baseTime;
+        
+        // Calculate Dynamic Time
+        if (baseTime > 0) {
             let multiplier = 1.0;
             if (step.type === 'input_strict' || step.type === 'sentence_reorder' || step.type === 'fill_gap') {
                 multiplier = getTimeMultiplier();
             }
             finalTime = Math.round(baseTime * multiplier);
-        } else {
-            elements.timerBar.style.width = '0%';
         }
 
-        // --- AUTO-PLAY LOGIC ---
-        // Support both new 'autoplay_drill' and legacy 'audio_autoplay' flags
-        // Imprint has its own internal logic, so skip it here
-        const autoPlayEnabled = (meta.autoplay_drill === true || meta.audio_autoplay === true);
-        const shouldAutoPlay = (autoPlayEnabled && step.type !== 'imprint');
+        // Auto-Play Logic
+        let shouldAutoPlay = (meta.autoplay_drill === true || meta.audio_autoplay === true);
+        
+        // Don't auto-play on Imprint (handled internally) or if no text available
+        if (step.type === 'imprint' || !link.trigger.text) shouldAutoPlay = false;
 
         if (shouldAutoPlay) {
-            // 1. Lock UI
+            // Lock UI & Show Indicator
             setInputState(false);
             elements.autoPlayStatus.style.display = 'block';
             elements.autoPlayStatus.innerText = '🎧 LISTENING...';
             
-            // 2. Play Trigger Audio (Question)
-            // Use Trigger text and Native language (e.g. "House" in English -> You write "Haus" in German)
-            const textToPlay = link.trigger.text;
-            const langToPlay = meta.native_language; 
-            
-            speak(textToPlay, langToPlay, () => {
-                // 3. On Finish: Unlock & Start Timer
+            // Speak Trigger
+            speak(link.trigger.text, meta.native_language, () => {
+                // On Finish
                 elements.autoPlayStatus.style.display = 'none';
                 setInputState(true);
                 if (finalTime > 0) startTimer(finalTime);
-            }, true); // Force 1.0x speed
+            }, true); // Force Normal Speed
         } else {
-            // No Auto-Play: Just start timer if it exists
+            // Standard Start
             if (finalTime > 0) startTimer(finalTime);
+            else elements.timerBar.style.width = '0%';
         }
     }
 
