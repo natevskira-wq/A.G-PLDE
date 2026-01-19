@@ -1152,7 +1152,9 @@
     }
 
     function renderStep() {
-        stopTimer(); resetInput(); appState.isShowingCorrectAnswer = false;
+        stopTimer(); 
+        resetInput(); 
+        appState.isShowingCorrectAnswer = false;
         elements.phaseLabel.classList.remove('cumulative-warning');
         elements.autoPlayStatus.style.display = 'none'; 
         
@@ -1171,9 +1173,7 @@
         if(!isInputStep) elements.input.style.display = 'none';
         else elements.input.style.display = 'block';
         
-        // AUTO-PLAY LOGIC
-        let shouldAutoPlay = (meta.audio_autoplay === true && step.type !== 'imprint');
-        
+        // --- RENDER CONTENT ---
         switch (step.type) {
             case 'imprint': renderImprint(link, step, meta); break;
             case 'multiple_choice': renderMultipleChoice(link, step); break;
@@ -1184,35 +1184,46 @@
             default: elements.stage.innerHTML = `ERR: ${step.type}`;
         }
         
+        // --- TIMER CALCULATION ---
+        let finalTime = 0;
         if (step.time_limit) {
-            // --- DYNAMIC MOBILE TIMER LOGIC ---
             let baseTime = step.time_limit;
             let multiplier = 1.0;
             if (step.type === 'input_strict' || step.type === 'sentence_reorder' || step.type === 'fill_gap') {
                 multiplier = getTimeMultiplier();
             }
-            const finalTime = Math.round(baseTime * multiplier);
-
-            if (shouldAutoPlay) {
-                // Lock UI
-                setInputState(false);
-                elements.autoPlayStatus.style.display = 'block';
-                elements.autoPlayStatus.innerText = '🎧 LISTENING...';
-                
-                const textToPlay = link.trigger.text;
-                const langToPlay = meta.native_language; 
-                
-                // 2. TTS Fix: Force Normal Speed for AutoPlay
-                speak(textToPlay, langToPlay, () => {
-                    elements.autoPlayStatus.style.display = 'none';
-                    setInputState(true); // Unlock
-                    startTimer(finalTime);
-                }, true);
-            } else {
-                startTimer(finalTime);
-            }
+            finalTime = Math.round(baseTime * multiplier);
+        } else {
+            elements.timerBar.style.width = '0%';
         }
-        else elements.timerBar.style.width = '0%';
+
+        // --- AUTO-PLAY LOGIC ---
+        // Support both new 'autoplay_drill' and legacy 'audio_autoplay' flags
+        // Imprint has its own internal logic, so skip it here
+        const autoPlayEnabled = (meta.autoplay_drill === true || meta.audio_autoplay === true);
+        const shouldAutoPlay = (autoPlayEnabled && step.type !== 'imprint');
+
+        if (shouldAutoPlay) {
+            // 1. Lock UI
+            setInputState(false);
+            elements.autoPlayStatus.style.display = 'block';
+            elements.autoPlayStatus.innerText = '🎧 LISTENING...';
+            
+            // 2. Play Trigger Audio (Question)
+            // Use Trigger text and Native language (e.g. "House" in English -> You write "Haus" in German)
+            const textToPlay = link.trigger.text;
+            const langToPlay = meta.native_language; 
+            
+            speak(textToPlay, langToPlay, () => {
+                // 3. On Finish: Unlock & Start Timer
+                elements.autoPlayStatus.style.display = 'none';
+                setInputState(true);
+                if (finalTime > 0) startTimer(finalTime);
+            }, true); // Force 1.0x speed
+        } else {
+            // No Auto-Play: Just start timer if it exists
+            if (finalTime > 0) startTimer(finalTime);
+        }
     }
 
     function updatePhaseLabel(step) {
