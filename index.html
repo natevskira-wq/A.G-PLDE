@@ -1605,14 +1605,53 @@
         appState.reorderState.availableItems.set(item.id, item);
         updateReorderUI();
     };
+// --- SEMANTIC NUMBER NORMALIZER ---
+    function semanticNormalize(text) {
+        if (!text) return "";
+        let s = text.toString().toLowerCase().trim();
 
+        // 1. Currency Map
+        s = s.replace(/€/g, 'euro').replace(/\$/g, 'dollar').replace(/£/g, 'pound');
+
+        // 2. German Word-to-Digit Map (Compounds allowed)
+        // Order matters: Process larger/specific numbers first if needed, but simple digit replacement works for "Zweihundert" -> "2hundert" -> "200"
+        const deMap = {
+            'eins': '1', 'ein': '1', 'zwei': '2', 'drei': '3', 'vier': '4', 'fünf': '5',
+            'sechs': '6', 'sieben': '7', 'acht': '8', 'neun': '9', 'zehn': '10',
+            'elf': '11', 'zwölf': '12', 'zwanzig': '20', 'dreißig': '30',
+            'hundert': '00', 'tausend': '000'
+        };
+
+        // 3. English Word-to-Digit Map
+        const enMap = {
+            'one': '1', 'two': '2', 'three': '3', 'four': '4', 'five': '5',
+            'six': '6', 'seven': '7', 'eight': '8', 'nine': '9', 'ten': '10',
+            'eleven': '11', 'twelve': '12', 'twenty': '20', 'thirty': '30',
+            'hundred': '00', 'thousand': '000'
+        };
+
+        // Apply Replacements
+        // German (Global match to handle compounds like "zweihundert" -> "200")
+        for (let [word, digit] of Object.entries(deMap)) {
+            s = s.replace(new RegExp(word, 'g'), digit);
+        }
+        
+        // English (Boundaries preferred to avoid partial matches, e.g., 'one' inside 'bone')
+        for (let [word, digit] of Object.entries(enMap)) {
+            s = s.replace(new RegExp(`\\b${word}\\b`, 'g'), digit);
+        }
+
+        // 4. Strip Spaces and Punctuation (Standardize)
+        // "2 00 euro" becomes "200euro", "200 €" becomes "200euro"
+        return s.replace(/[\s.,\-]/g, '');
+    }
     // --- VALIDATION ---
     function validate(val, source='keyboard') {
         if(appState.isShowingCorrectAnswer) return;
         
         // Handle "Audio Option" special case
         if (elements.submitBtn.innerText === "CONFIRM" && appState.selectedAudioOption) {
-            val = appState.selectedAudioOption; // Use selected text instead of input
+            val = appState.selectedAudioOption; 
         }
 
         stopTimer();
@@ -1638,24 +1677,22 @@
         appState.userInput = val;
         const meta = appState.currentLessonData.meta || {};
         
-        // 4. Logging (QA Requirement)
-        console.log(`QA LOG: Validating "${val}" vs Target "${target}" (Source: ${source})`);
-
         let passed = false;
         
         // CASE A: Audio Match Confirmation
         if (elements.submitBtn.innerText === "CONFIRM" && source === 'keyboard') {
-            // Source is 'keyboard' because the button click triggers it
             passed = (val === target);
         }
-        // CASE B: Voice Input
+        // CASE B: Voice Input (Korean & Standard)
         else if(source === 'voice') {
             const langCode = (meta.target_language || '').split('-')[0];
+            
+            // Basic Digit Map (Legacy)
             val = val.replace(/\b\d+\b/g, (match) => {
                 if (DIGIT_MAP[langCode] && DIGIT_MAP[langCode][match]) return DIGIT_MAP[langCode][match];
                 return match;
             });
-            appState.userInput = val;
+            appState.userInput = val; // Update input for feedback
 
             if(meta && (meta.target_language.startsWith('ko'))) {
                 const result = koreanMatcher.matchWithAlternatives(appState.voiceCandidates, target, {
@@ -1663,18 +1700,38 @@
                 });
                 passed = result.match;
             } else {
-                const cleanUser = val.trim().toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
-                const cleanTarget = target.trim().toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
-                const similarity = koreanMatcher.calculateSimilarity(cleanUser, cleanTarget);
-                passed = similarity >= (meta.voice_threshold || 0.8);
+                // SEMANTIC CHECK FOR VOICE
+                const semUser = semanticNormalize(val);
+                const semTarget = semanticNormalize(target);
+                
+                // Check Normalized Equality OR Levenshtein on Original
+                if (semUser === semTarget) {
+                    passed = true;
+                } else {
+                    const cleanUser = val.trim().toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+                    const cleanTarget = target.trim().toLowerCase().replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"");
+                    const similarity = koreanMatcher.calculateSimilarity(cleanUser, cleanTarget);
+                    passed = similarity >= (meta.voice_threshold || 0.8);
+                }
             }
         } 
-        // CASE C: Standard Text Input / Multiple Choice
+        // CASE C: Standard Text Input
         else {
-            const cleanUser = val.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
-            const cleanTarget = target.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
-            passed = (cleanUser === cleanTarget);
+            // SEMANTIC CHECK FOR TYPING
+            const semUser = semanticNormalize(val);
+            const semTarget = semanticNormalize(target);
+            
+            if (semUser === semTarget) {
+                passed = true;
+            } else {
+                // Fallback to strict string match
+                const cleanUser = val.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
+                const cleanTarget = target.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
+                passed = (cleanUser === cleanTarget);
+            }
         }
+        
+        console.log(`QA LOG: "${val}" vs "${target}" | Normalized: "${semanticNormalize(val)}" vs "${semanticNormalize(target)}" | Passed: ${passed}`);
 
         if(passed) pass();
         else {
@@ -1682,7 +1739,6 @@
              else fail();
         }
     }
-
     function pass() {
         if (appState.isAnswered) return;
         appState.isAnswered = true;
