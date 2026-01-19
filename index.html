@@ -326,7 +326,7 @@
             </div>
         </div>
         
-        <!-- STATUS LINE -->
+        <!-- NEW STATUS LINE -->
         <div id="status-line">Select languages to see availability.</div>
 
         <div style="margin-top: 20px;">
@@ -347,8 +347,6 @@
         <div id="dashboard-status" style="margin-bottom: 20px; font-weight: bold;">Initializing...</div>
         <div id="lessons-container"></div>
         
-        
-
         <div style="margin-top: 30px; text-align: center; font-size: 10px; color: #999; border-top: 1px dashed #ccc; padding-top: 10px;">
             Engineered by Abd-Alrahman.Gamal - 01001395058
         </div>
@@ -563,7 +561,7 @@
     const koreanMatcher = new UniversalKoreanMatcher();
 
     // --- CONSTANTS ---
-    // SRS: Spaced Repetition System Intervals (Days)
+    const DECAY_MS = 3 * 24 * 60 * 60 * 1000;
     const SRS_INTERVALS = [1, 3, 7, 14, 30]; 
     const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -858,40 +856,14 @@
 
     // --- DATA & SYNC ---
     function getCurrentLevelKey() { return `${appState.userLanguagePair.native}_${appState.userLanguagePair.target}_${appState.selectedLevel}`; }
-    
-    // UPDATED SRS LOGIC
     async function saveProgress(lessonId, score) {
         const key = getCurrentLevelKey();
         if (!appState.dbProgress[key]) appState.dbProgress[key] = {};
-        
         const currentEntry = appState.dbProgress[key][lessonId];
+        const currentBest = currentEntry ? (currentEntry.score || 0) : 0;
         
-        // Determine current SRS Level (Default 1 if new or legacy data)
-        let currentLevel = 0;
-        if (currentEntry && typeof currentEntry === 'object') {
-            currentLevel = currentEntry.srsLevel || 1;
-        }
-
-        // SRS Promotion Logic
-        let newLevel = 1;
-        if (score >= 90) {
-            // Success: Promote (Max Level 5)
-            // If it's a new lesson (level 0), it becomes level 1. If level 1 -> 2, etc.
-            newLevel = Math.min(5, currentLevel + 1);
-        } else {
-            // Failure: Reset to Level 1
-            newLevel = 1;
-        }
-
-        // Preserve "Best Score" for display, but update "Last Played" for decay
-        const bestScore = currentEntry ? (currentEntry.score || 0) : 0;
-        const finalScore = Math.max(bestScore, score);
-
-        appState.dbProgress[key][lessonId] = {
-            score: finalScore,
-            lastPlayed: Date.now(),
-            srsLevel: newLevel
-        };
+        if (score >= currentBest) appState.dbProgress[key][lessonId] = { score: score, lastPlayed: Date.now() };
+        else if (score >= 80 && currentEntry) currentEntry.lastPlayed = Date.now();
 
         try { await supabaseClient.from('user_profiles').update({ progress: appState.dbProgress }).eq('access_code', appState.accessCode); } 
         catch (e) { console.error("Sync Error", e); }
@@ -1610,12 +1582,15 @@
 
         let passed = false;
         
-        // CASE A: Audio Match Confirmation
+        // Strict match for Audio Buttons (Exact text) - Source: 'audio_match_confirm' (implicit via button text check or if source passed directly)
+        // Better: rely on the fact that Audio Match sets button text to "CONFIRM" AND source is a click on that button.
+        // Or if validation was called via button click (source='keyboard' default).
+        
+        // Special Handling for "CONFIRM" button click (Audio Match / Safety Mode)
         if (elements.submitBtn.innerText === "CONFIRM" && source === 'keyboard') {
             // Source is 'keyboard' because the button click triggers it
             passed = (val === target);
         }
-        // CASE B: Voice Input
         else if(source === 'voice') {
             const langCode = (meta.target_language || '').split('-')[0];
             val = val.replace(/\b\d+\b/g, (match) => {
@@ -1635,9 +1610,7 @@
                 const similarity = koreanMatcher.calculateSimilarity(cleanUser, cleanTarget);
                 passed = similarity >= (meta.voice_threshold || 0.8);
             }
-        } 
-        // CASE C: Standard Text Input / Multiple Choice
-        else {
+        } else {
             const cleanUser = val.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
             const cleanTarget = target.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
             passed = (cleanUser === cleanTarget);
