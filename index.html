@@ -326,7 +326,7 @@
             </div>
         </div>
         
-        <!-- NEW STATUS LINE -->
+        <!-- STATUS LINE -->
         <div id="status-line">Select languages to see availability.</div>
 
         <div style="margin-top: 20px;">
@@ -635,7 +635,11 @@
             customBtns.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
             elements.inputArea.style.opacity = '1';
             
-            if (elements.input.style.display !== 'none') elements.input.focus();
+            // Only focus input if visible and not on mobile (to prevent keyboard popup on step load)
+            // Fix: Only focus if NOT auto-playing
+            if (elements.input.style.display !== 'none' && window.innerWidth >= 768) {
+                elements.input.focus();
+            }
         }
     }
 
@@ -1306,9 +1310,13 @@
 
     function renderInputStrict(link, step, meta) {
         let html = `<div style="font-size:32px; font-weight:bold; margin-bottom:20px;">`;
-        html += `<span class="speakable" onclick="speak('${link.trigger.text.replace(/'/g, "\\'")}', '${meta.native_language}')">${link.trigger.text}</span>`;
-        if (link.trigger.translation) html += `<div class="translation-text">${link.trigger.translation}</div>`;
-        if (link.trigger.phonetic) html += `<div class="phonetic-text">${link.trigger.phonetic}</div>`;
+        // Use renderMedia helper logic for the trigger content itself if needed, but for Strict Input we usually want text
+        // However, let's respect "Hide Text" for the trigger here too:
+        const showText = meta.show_text !== false;
+        
+        // Custom rendering for strict input trigger to allow hide-text + audio icon
+        html += renderMedia(link.trigger, '', meta.native_language, link.trigger.translation, link.trigger.phonetic, showText);
+
         html += `</div>`;
         
         // AUDIO MATCHER SAFETY MODE
@@ -1582,15 +1590,12 @@
 
         let passed = false;
         
-        // Strict match for Audio Buttons (Exact text) - Source: 'audio_match_confirm' (implicit via button text check or if source passed directly)
-        // Better: rely on the fact that Audio Match sets button text to "CONFIRM" AND source is a click on that button.
-        // Or if validation was called via button click (source='keyboard' default).
-        
-        // Special Handling for "CONFIRM" button click (Audio Match / Safety Mode)
+        // CASE A: Audio Match Confirmation
         if (elements.submitBtn.innerText === "CONFIRM" && source === 'keyboard') {
             // Source is 'keyboard' because the button click triggers it
             passed = (val === target);
         }
+        // CASE B: Voice Input
         else if(source === 'voice') {
             const langCode = (meta.target_language || '').split('-')[0];
             val = val.replace(/\b\d+\b/g, (match) => {
@@ -1610,7 +1615,9 @@
                 const similarity = koreanMatcher.calculateSimilarity(cleanUser, cleanTarget);
                 passed = similarity >= (meta.voice_threshold || 0.8);
             }
-        } else {
+        } 
+        // CASE C: Standard Text Input / Multiple Choice
+        else {
             const cleanUser = val.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
             const cleanTarget = target.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g,"").replace(/\s+/g,' ').trim().toLowerCase();
             passed = (cleanUser === cleanTarget);
@@ -1854,11 +1861,8 @@
     
     function renderFinalBossStep() {
         stopTimer(); resetInput(); appState.isShowingCorrectAnswer = false;
-        elements.autoPlayStatus.style.display = 'none';
-
         const link = appState.finalBossQueue[appState.cumulativeIndex];
         const meta = appState.currentLessonData.meta || {};
-        
         elements.phaseLabel.innerText = "FINAL BOSS";
         
         renderInputStrict(link, null, meta);
