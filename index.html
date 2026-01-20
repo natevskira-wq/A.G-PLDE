@@ -623,6 +623,7 @@
     }
 
     // --- HELPER: INPUT STATE TOGGLE (AUTO-PLAY LOCK) ---
+    // --- HELPER: INPUT STATE TOGGLE (AUTO-PLAY LOCK) ---
     function setInputState(enabled) {
         const els = [elements.input, elements.voiceBtn, elements.submitBtn];
         const customBtns = document.querySelectorAll('.audio-option-btn, .word-btn, .letter-btn, .option-btn');
@@ -646,10 +647,9 @@
             customBtns.forEach(b => { b.disabled = false; b.style.opacity = '1'; });
             elements.inputArea.style.opacity = '1';
             
-            if (elements.input.style.display !== 'none') elements.input.focus();
+            // FIX: Removed auto-focus so mobile keyboard doesn't hide the Voice button
         }
     }
-
     // --- INVISIBLE TTS ENGINE (ROBUST V2) ---
     let ttsState = { text: '', speed: 1.0 };
     window.utterances = []; 
